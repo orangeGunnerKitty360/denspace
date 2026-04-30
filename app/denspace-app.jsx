@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CalendarDays,
+  Crown,
   Home,
   Image,
   LockKeyhole,
@@ -27,6 +28,19 @@ import { authClient } from "../lib/auth/client";
 const circles = [];
 const events = [];
 const postKinds = ["art", "meetup", "making"];
+const ownerNames = new Set(["frutigerfloppa"]);
+
+function isOwnerName(name) {
+  return ownerNames.has(String(name || "").trim().toLowerCase());
+}
+
+function OwnerBadge() {
+  return (
+    <span className="owner-badge" title="Owner">
+      <Crown /> Owner
+    </span>
+  );
+}
 
 function getDisplayUser(user) {
   return user ? {
@@ -270,7 +284,10 @@ export default function DenSpaceApp() {
           <div className="mini-profile">
             <div className={`avatar ${displayUser.avatarClass}`}>{displayUser.picture ? <img src={displayUser.picture} alt="" /> : displayUser.avatar}</div>
             <div>
-              <strong>{displayUser.name}</strong>
+              <div className="profile-name-line">
+                <strong>{displayUser.name}</strong>
+                {isOwnerName(displayUser.name) && <OwnerBadge />}
+              </div>
               <span>{displayUser.handle}</span>
             </div>
             <button className="profile-signout" type="button" aria-label="Sign out" onClick={handleSignOut}><LogOut /></button>
@@ -349,7 +366,10 @@ export default function DenSpaceApp() {
                     <header className="post-head">
                       <div className={`avatar ${post.avatarClass}`}>{post.avatar}</div>
                       <div className="post-author">
-                        <strong>{post.author}</strong>
+                        <div className="post-author-line">
+                          <strong>{post.author}</strong>
+                          {isOwnerName(post.author) && <OwnerBadge />}
+                        </div>
                         <span>{post.handle} · <span className="post-time">{post.time}</span></span>
                       </div>
                       <span className="post-tag">{post.kind}</span>

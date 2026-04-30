@@ -368,6 +368,46 @@ button {
   font-size: 0.82rem;
 }
 
+.profile-name-line,
+.post-author-line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.profile-name-line strong,
+.post-author-line strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.owner-badge {
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 0 7px;
+  border-radius: 8px;
+  color: #00425f;
+  background:
+    linear-gradient(180deg, #ffffff, #fff59b 42%, #ffd84f 43%, #40c95d);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: var(--inner-shine), 0 6px 14px rgba(31, 160, 59, 0.18);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.owner-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
 .avatar {
   width: 44px;
   height: 44px;
