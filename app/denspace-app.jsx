@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { authClient } from "../lib/auth/client";
 
-const circles = [];
 const events = [];
 const postKinds = ["art", "meetup", "making"];
 const ownerNames = new Set(["frutigerfloppa"]);
@@ -90,6 +89,16 @@ export default function DenSpaceApp() {
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState("");
   const [commentDrafts, setCommentDrafts] = useState({});
   const [commentingPosts, setCommentingPosts] = useState({});
+  const [chats, setChats] = useState([]);
+  const [selectedChatId, setSelectedChatId] = useState("");
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatForm, setChatForm] = useState({ name: "Den Lounge", icon: "DL" });
+  const [chatEditForm, setChatEditForm] = useState({ name: "", icon: "" });
+  const [chatNote, setChatNote] = useState("");
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [isSavingChat, setIsSavingChat] = useState(false);
+  const [isSendingChat, setIsSendingChat] = useState(false);
   const [feedNote, setFeedNote] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
@@ -109,9 +118,47 @@ export default function DenSpaceApp() {
     setFeedNote("");
   };
 
+  const fetchChats = async () => {
+    const response = await fetch("/api/chats");
+    if (!response.ok) {
+      setChatNote("Connect Neon Postgres to load group chats.");
+      return;
+    }
+
+    const data = await response.json();
+    const nextChats = data.chats || [];
+    setChats(nextChats);
+    setSelectedChatId((current) => current || nextChats[0]?.id || "");
+    setChatNote("");
+  };
+
+  const fetchChatMessages = async (chatId) => {
+    if (!chatId) {
+      setChatMessages([]);
+      return;
+    }
+
+    const response = await fetch(`/api/chats/${chatId}/messages`);
+    if (!response.ok) {
+      setChatNote("Messages could not be loaded yet.");
+      return;
+    }
+
+    const data = await response.json();
+    setChatMessages(data.messages || []);
+  };
+
   useEffect(() => {
     fetchPosts();
   }, [activeFilter, search]);
+
+  useEffect(() => {
+    fetchChats();
+  }, []);
+
+  useEffect(() => {
+    fetchChatMessages(selectedChatId);
+  }, [selectedChatId]);
 
   useEffect(() => {
     if (!selectedUpload) {
@@ -125,6 +172,16 @@ export default function DenSpaceApp() {
   }, [selectedUpload]);
 
   const visiblePosts = useMemo(() => posts, [posts]);
+  const activeChat = useMemo(() => chats.find((chat) => chat.id === selectedChatId) || null, [chats, selectedChatId]);
+
+  useEffect(() => {
+    if (!activeChat) {
+      setChatEditForm({ name: "", icon: "" });
+      return;
+    }
+
+    setChatEditForm({ name: activeChat.name, icon: activeChat.icon });
+  }, [activeChat]);
 
   async function handleAuthSubmit(event) {
     event.preventDefault();
@@ -179,6 +236,7 @@ export default function DenSpaceApp() {
     setAuthNote(authForm.remember ? "Signed in and remembered on this device." : "Signed in for this browser session.");
     await refetch();
     await fetchPosts();
+    await fetchChats();
   }
 
   async function handleSignOut() {
@@ -277,6 +335,120 @@ export default function DenSpaceApp() {
         : post
     )));
     setCommentDrafts((current) => ({ ...current, [postId]: "" }));
+  }
+
+  async function createChat() {
+    if (!user) {
+      setAuthNote("Sign in before creating a group chat.");
+      return;
+    }
+
+    const name = chatForm.name.trim();
+    if (!name) {
+      setChatNote("Name the group chat first.");
+      return;
+    }
+
+    setIsCreatingChat(true);
+    setChatNote("");
+
+    const response = await fetch("/api/chats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, icon: chatForm.icon })
+    });
+
+    setIsCreatingChat(false);
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setChatNote(data.details || data.error || "The group chat could not be created yet.");
+      return;
+    }
+
+    const data = await response.json();
+    setChats((current) => [data.chat, ...current.filter((chat) => chat.id !== data.chat.id)]);
+    setSelectedChatId(data.chat.id);
+    setChatForm({ name: "", icon: "GC" });
+  }
+
+  async function saveChatDetails() {
+    if (!activeChat) return;
+    if (!user) {
+      setAuthNote("Sign in before editing a group chat.");
+      return;
+    }
+
+    const name = chatEditForm.name.trim();
+    if (!name) {
+      setChatNote("Name the group chat first.");
+      return;
+    }
+
+    setIsSavingChat(true);
+    setChatNote("");
+
+    const response = await fetch(`/api/chats/${activeChat.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, icon: chatEditForm.icon })
+    });
+
+    setIsSavingChat(false);
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setChatNote(data.details || data.error || "The group chat could not be updated yet.");
+      return;
+    }
+
+    const data = await response.json();
+    setChats((current) => current.map((chat) => chat.id === data.chat.id ? data.chat : chat));
+    setChatNote("Chat details saved.");
+  }
+
+  async function sendChatMessage() {
+    const text = chatDraft.trim();
+    if (!user) {
+      setAuthNote("Sign in before chatting.");
+      return;
+    }
+
+    if (!activeChat) {
+      setChatNote("Create or select a group chat first.");
+      return;
+    }
+
+    if (!text) {
+      setChatNote("Write a message before sending.");
+      return;
+    }
+
+    setIsSendingChat(true);
+    setChatNote("");
+
+    const response = await fetch(`/api/chats/${activeChat.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+
+    setIsSendingChat(false);
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setChatNote(data.details || data.error || "The message could not be sent yet.");
+      return;
+    }
+
+    const data = await response.json();
+    setChatMessages((current) => [...current, data.message]);
+    setChatDraft("");
+    setChats((current) => current.map((chat) => (
+      chat.id === activeChat.id
+        ? { ...chat, latestMessage: data.message.text, messageCount: chat.messageCount + 1, time: "now" }
+        : chat
+    )));
   }
 
   return (
@@ -493,14 +665,102 @@ export default function DenSpaceApp() {
             </section>
 
             <aside className="right-rail">
-              <section className="panel">
+              <section className="panel chat-panel" aria-label="Group chats">
                 <div className="panel-header">
-                  <h2>Your Circles</h2>
-                  <button className="ghost-button" type="button">New</button>
+                  <h2>Group Chats</h2>
+                  <span className="chat-count">{chats.length}</span>
                 </div>
-                <div className="circle-list">
-                  {circles.length ? null : <div className="circle"><div><strong>No circles yet</strong><span className="circle-meta">Create one when you are ready.</span></div></div>}
+                <div className="chat-create">
+                  <input
+                    className="chat-icon-input"
+                    value={chatForm.icon}
+                    onChange={(event) => setChatForm({ ...chatForm, icon: event.target.value })}
+                    maxLength="6"
+                    aria-label="New group chat icon"
+                    placeholder="GC"
+                    disabled={!user || isCreatingChat}
+                  />
+                  <input
+                    value={chatForm.name}
+                    onChange={(event) => setChatForm({ ...chatForm, name: event.target.value })}
+                    maxLength="42"
+                    aria-label="New group chat name"
+                    placeholder="Group chat name"
+                    disabled={!user || isCreatingChat}
+                  />
+                  <button className="ghost-button" type="button" onClick={createChat} disabled={!user || isCreatingChat}>{isCreatingChat ? "Making" : "New"}</button>
                 </div>
+                <div className="chat-list">
+                  {chats.length ? chats.map((chat) => (
+                    <button className={`chat-list-item ${chat.id === selectedChatId ? "active" : ""}`} type="button" key={chat.id} onClick={() => setSelectedChatId(chat.id)}>
+                      <span className="chat-icon">{chat.icon}</span>
+                      <span>
+                        <strong>{chat.name}</strong>
+                        <small>{chat.latestMessage || "No messages yet"}</small>
+                      </span>
+                      <em>{chat.messageCount}</em>
+                    </button>
+                  )) : (
+                    <div className="chat-empty"><strong>No group chats yet</strong><span>Create one when you are ready.</span></div>
+                  )}
+                </div>
+                {activeChat && (
+                  <div className="chat-room">
+                    <div className="chat-room-head">
+                      <span className="chat-icon large">{activeChat.icon}</span>
+                      <div>
+                        <strong>{activeChat.name}</strong>
+                        <span>{activeChat.messageCount} {activeChat.messageCount === 1 ? "message" : "messages"}</span>
+                      </div>
+                    </div>
+                    <div className="chat-edit">
+                      <input
+                        className="chat-icon-input"
+                        value={chatEditForm.icon}
+                        onChange={(event) => setChatEditForm({ ...chatEditForm, icon: event.target.value })}
+                        maxLength="6"
+                        aria-label="Edit group chat icon"
+                        disabled={!user || isSavingChat}
+                      />
+                      <input
+                        value={chatEditForm.name}
+                        onChange={(event) => setChatEditForm({ ...chatEditForm, name: event.target.value })}
+                        maxLength="42"
+                        aria-label="Edit group chat name"
+                        disabled={!user || isSavingChat}
+                      />
+                      <button className="ghost-button" type="button" onClick={saveChatDetails} disabled={!user || isSavingChat}>{isSavingChat ? "Saving" : "Save"}</button>
+                    </div>
+                    <div className="chat-messages" aria-label={`${activeChat.name} messages`}>
+                      {chatMessages.length ? chatMessages.map((message) => (
+                        <article className="chat-message" key={message.id}>
+                          <span className="comment-avatar">{message.avatar}</span>
+                          <div>
+                            <div className="comment-author-line">
+                              <strong>{message.author}</strong>
+                              <span>{message.time}</span>
+                            </div>
+                            <p>{message.text}</p>
+                          </div>
+                        </article>
+                      )) : (
+                        <p className="comment-empty">No messages yet.</p>
+                      )}
+                    </div>
+                    <div className="chat-send">
+                      <textarea
+                        value={chatDraft}
+                        onChange={(event) => setChatDraft(event.target.value)}
+                        rows="2"
+                        maxLength="420"
+                        placeholder={user ? "Message the group" : "Sign in to chat"}
+                        disabled={!user || isSendingChat}
+                      />
+                      <button className="comment-button" type="button" onClick={sendChatMessage} disabled={!user || isSendingChat}><Send /> {isSendingChat ? "Sending" : "Send"}</button>
+                    </div>
+                  </div>
+                )}
+                {chatNote && <p className="composer-status">{chatNote}</p>}
               </section>
 
               <section className="panel">
