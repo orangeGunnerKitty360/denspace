@@ -42,6 +42,18 @@ function OwnerBadge() {
   );
 }
 
+function UserBadge() {
+  return (
+    <span className="user-badge" title="User">
+      <UsersRound /> User
+    </span>
+  );
+}
+
+function ProfileBadge({ name }) {
+  return isOwnerName(name) ? <OwnerBadge /> : <UserBadge />;
+}
+
 function getDisplayUser(user) {
   return user ? {
     name: user.name || user.email,
@@ -286,7 +298,7 @@ export default function DenSpaceApp() {
             <div>
               <div className="profile-name-line">
                 <strong>{displayUser.name}</strong>
-                {isOwnerName(displayUser.name) && <OwnerBadge />}
+                <ProfileBadge name={displayUser.name} />
               </div>
               <span>{displayUser.handle}</span>
             </div>
@@ -368,7 +380,7 @@ export default function DenSpaceApp() {
                       <div className="post-author">
                         <div className="post-author-line">
                           <strong>{post.author}</strong>
-                          {isOwnerName(post.author) && <OwnerBadge />}
+                          <ProfileBadge name={post.author} />
                         </div>
                         <span>{post.handle} · <span className="post-time">{post.time}</span></span>
                       </div>

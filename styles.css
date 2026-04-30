@@ -384,7 +384,8 @@ button {
   white-space: nowrap;
 }
 
-.owner-badge {
+.owner-badge,
+.user-badge {
   min-height: 23px;
   display: inline-flex;
   align-items: center;
@@ -392,18 +393,30 @@ button {
   flex: 0 0 auto;
   padding: 0 7px;
   border-radius: 8px;
-  color: #00425f;
-  background:
-    linear-gradient(180deg, #ffffff, #fff59b 42%, #ffd84f 43%, #40c95d);
-  border: 1px solid rgba(255,255,255,0.9);
-  box-shadow: var(--inner-shine), 0 6px 14px rgba(31, 160, 59, 0.18);
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0;
 }
 
-.owner-badge svg {
+.owner-badge {
+  color: #00425f;
+  background:
+    linear-gradient(180deg, #ffffff, #fff59b 42%, #ffd84f 43%, #40c95d);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: var(--inner-shine), 0 6px 14px rgba(31, 160, 59, 0.18);
+}
+
+.user-badge {
+  color: #004d61;
+  background:
+    linear-gradient(180deg, #ffffff, #aef5ff 42%, #54d9ff 43%, #6bf2b6);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: var(--inner-shine), 0 6px 14px rgba(30, 157, 188, 0.18);
+}
+
+.owner-badge svg,
+.user-badge svg {
   width: 13px;
   height: 13px;
 }
