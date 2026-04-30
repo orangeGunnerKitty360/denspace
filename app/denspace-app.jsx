@@ -110,20 +110,26 @@ export default function DenSpaceApp() {
       return;
     }
 
-    const response = authMode === "sign-up"
-      ? await authClient.signUp.email({
-        email,
-        password,
-        name,
-        rememberMe: authForm.remember
-      })
-      : await authClient.signIn.email({
-        email,
-        password,
-        rememberMe: authForm.remember
-      });
+    let response;
+    try {
+      response = authMode === "sign-up"
+        ? await authClient.signUp.email({
+          email,
+          password,
+          name,
+          rememberMe: authForm.remember
+        })
+        : await authClient.signIn.email({
+          email,
+          password,
+          rememberMe: authForm.remember
+        });
+    } catch (error) {
+      setAuthNote(error?.message || "Neon Auth could not be reached. Please try again.");
+      return;
+    }
 
-    if (response.error) {
+    if (response?.error) {
       setAuthNote(response.error.message || "Neon Auth could not sign you in yet.");
       return;
     }
