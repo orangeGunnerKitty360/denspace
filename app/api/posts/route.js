@@ -23,16 +23,37 @@ export async function GET(request) {
   const rows = await db`
     SELECT
       posts.*,
-      COALESCE(
-        jsonb_object_agg(reaction_counts.reaction, reaction_counts.count) FILTER (WHERE reaction_counts.reaction IS NOT NULL),
-        '{}'::jsonb
-      ) AS reactions
+      COALESCE(reaction_counts.reactions, '{}'::jsonb) AS reactions,
+      COALESCE(comment_rows.comments, '[]'::jsonb) AS comments
     FROM posts
-    LEFT JOIN (
-      SELECT post_id, reaction, count(*)::int AS count
-      FROM post_reactions
-      GROUP BY post_id, reaction
-    ) AS reaction_counts ON reaction_counts.post_id = posts.id
+    LEFT JOIN LATERAL (
+      SELECT jsonb_object_agg(reaction_counts.reaction, reaction_counts.count) AS reactions
+      FROM (
+        SELECT reaction, count(*)::int AS count
+        FROM post_reactions
+        WHERE post_id = posts.id
+        GROUP BY reaction
+      ) AS reaction_counts
+    ) AS reaction_counts ON true
+    LEFT JOIN LATERAL (
+      SELECT jsonb_agg(
+        jsonb_build_object(
+          'id', limited_comments.id,
+          'author_name', limited_comments.author_name,
+          'author_email', limited_comments.author_email,
+          'body', limited_comments.body,
+          'created_at', limited_comments.created_at
+        )
+        ORDER BY limited_comments.created_at ASC
+      ) AS comments
+      FROM (
+        SELECT id, author_name, author_email, body, created_at
+        FROM post_comments
+        WHERE post_id = posts.id
+        ORDER BY created_at ASC
+        LIMIT 20
+      ) AS limited_comments
+    ) AS comment_rows ON true
     WHERE (${kind} = 'all' OR posts.kind = ${kind})
       AND (
         ${query} = ''
@@ -41,7 +62,6 @@ export async function GET(request) {
         OR lower(posts.author_email) LIKE ${search}
         OR lower(posts.kind) LIKE ${search}
       )
-    GROUP BY posts.id
     ORDER BY posts.created_at DESC
     LIMIT 50
   `;
@@ -122,5 +142,5 @@ export async function POST(request) {
     RETURNING *
   `;
 
-  return Response.json({ post: serializePost({ ...rows[0], reactions: {} }) }, { status: 201 });
+  return Response.json({ post: serializePost({ ...rows[0], reactions: {}, comments: [] }) }, { status: 201 });
 }

@@ -88,6 +88,8 @@ export default function DenSpaceApp() {
   const [postText, setPostText] = useState("");
   const [selectedUpload, setSelectedUpload] = useState(null);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState("");
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [commentingPosts, setCommentingPosts] = useState({});
   const [feedNote, setFeedNote] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
@@ -237,6 +239,44 @@ export default function DenSpaceApp() {
     if (!response.ok) return;
     const data = await response.json();
     setPosts((current) => current.map((post) => post.id === postId ? { ...post, reactions: data.reactions } : post));
+  }
+
+  async function createComment(postId) {
+    const text = (commentDrafts[postId] || "").trim();
+    if (!user) {
+      setAuthNote("Sign in before commenting.");
+      return;
+    }
+
+    if (!text) {
+      setFeedNote("Write a comment before sending.");
+      return;
+    }
+
+    setCommentingPosts((current) => ({ ...current, [postId]: true }));
+    setFeedNote("");
+
+    const response = await fetch(`/api/posts/${postId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+
+    setCommentingPosts((current) => ({ ...current, [postId]: false }));
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setFeedNote(data.details || data.error || "The comment could not be saved yet.");
+      return;
+    }
+
+    const data = await response.json();
+    setPosts((current) => current.map((post) => (
+      post.id === postId
+        ? { ...post, comments: [...(post.comments || []), data.comment] }
+        : post
+    )));
+    setCommentDrafts((current) => ({ ...current, [postId]: "" }));
   }
 
   return (
@@ -402,6 +442,41 @@ export default function DenSpaceApp() {
                       </div>
                       <button className="share-button" type="button" aria-label="Share post"><Share2 /></button>
                     </footer>
+                    <section className="comments-panel" aria-label={`Comments on ${post.author}'s post`}>
+                      <div className="comments-header">
+                        <span><MessageCircle /> {(post.comments || []).length} {(post.comments || []).length === 1 ? "comment" : "comments"}</span>
+                      </div>
+                      {(post.comments || []).length > 0 && (
+                        <div className="comment-list">
+                          {(post.comments || []).map((comment) => (
+                            <article className="comment" key={comment.id}>
+                              <div className="comment-avatar">{comment.avatar}</div>
+                              <div>
+                                <div className="comment-author-line">
+                                  <strong>{comment.author}</strong>
+                                  <ProfileBadge name={comment.author} />
+                                  <span>{comment.time}</span>
+                                </div>
+                                <p>{comment.text}</p>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                      <div className="comment-form">
+                        <textarea
+                          value={commentDrafts[post.id] || ""}
+                          onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
+                          rows="2"
+                          maxLength="220"
+                          placeholder={user ? "Add a comment" : "Sign in to comment"}
+                          disabled={!user || commentingPosts[post.id]}
+                        />
+                        <button className="comment-button" type="button" onClick={() => createComment(post.id)} disabled={!user || commentingPosts[post.id]}>
+                          <Send /> {commentingPosts[post.id] ? "Sending" : "Comment"}
+                        </button>
+                      </div>
+                    </section>
                   </article>
                 )) : (
                   <article className="post-card empty-state">
