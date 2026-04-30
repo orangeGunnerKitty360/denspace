@@ -166,7 +166,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      setFeedNote(data.error || "The post could not be saved yet.");
+      setFeedNote(data.details || data.error || "The post could not be saved yet.");
       return;
     }
 

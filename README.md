@@ -8,6 +8,7 @@ DenSpace is a Frutiger Aero social feed with email/password authentication, shar
 - Neon Auth
 - Neon Postgres
 - Vercel Blob
+- OpenAI moderation
 - Vercel hosting
 
 ## Local Setup
@@ -31,6 +32,8 @@ DATABASE_URL=
 BLOB_READ_WRITE_TOKEN=
 NEON_AUTH_BASE_URL=
 NEON_AUTH_COOKIE_SECRET=
+OPENAI_API_KEY=
+OPENAI_MODERATION_MODEL=
 ```
 
 4. Start the app:
@@ -40,3 +43,5 @@ npm run dev
 ```
 
 The Postgres tables are created automatically the first time the posts API runs.
+
+Posts are checked server-side before storage. With `OPENAI_API_KEY` set, DenSpace uses OpenAI moderation plus a structured anti-furry harassment classifier. Without the key, it falls back to a narrow keyword safety check.

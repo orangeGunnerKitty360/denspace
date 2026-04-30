@@ -2,6 +2,7 @@ import { put } from "@vercel/blob";
 import { ensureSchema, getSql } from "../../../lib/db";
 import { getAuth } from "../../../lib/auth/server";
 import { POST_KINDS, serializePost } from "../../../lib/posts";
+import { moderatePostContent } from "../../../lib/moderation";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,18 @@ export async function POST(request) {
 
   if (!text && !(file instanceof File && file.size > 0)) {
     return Response.json({ error: "Add text or an image before posting." }, { status: 400 });
+  }
+
+  const moderation = await moderatePostContent({
+    text,
+    imageName: file instanceof File ? file.name : ""
+  });
+
+  if (!moderation.allowed) {
+    return Response.json({
+      error: "This post was blocked by moderation.",
+      details: moderation.reason
+    }, { status: 422 });
   }
 
   let blob = null;
