@@ -64,6 +64,7 @@ export default function DenSpaceApp() {
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState("");
   const [feedNote, setFeedNote] = useState("");
   const [isPosting, setIsPosting] = useState(false);
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
 
   const authVisible = !isPending && !user;
 
@@ -105,12 +106,23 @@ export default function DenSpaceApp() {
     const password = authForm.password;
     const name = authForm.name.trim();
 
-    if (!email || !password || (authMode === "sign-up" && !name)) {
-      setAuthNote("Enter your email, password, and display name.");
+    if (authMode === "sign-up" && !name) {
+      setAuthNote("Enter a display name to create your account.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAuthNote("Enter a valid email address.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setAuthNote("Use a password with at least 8 characters.");
       return;
     }
 
     let response;
+    setIsAuthSubmitting(true);
     try {
       response = authMode === "sign-up"
         ? await authClient.signUp.email({
@@ -126,8 +138,10 @@ export default function DenSpaceApp() {
         });
     } catch (error) {
       setAuthNote(error?.message || "Neon Auth could not be reached. Please try again.");
+      setIsAuthSubmitting(false);
       return;
     }
+    setIsAuthSubmitting(false);
 
     if (response?.error) {
       setAuthNote(response.error.message || "Neon Auth could not sign you in yet.");
@@ -208,7 +222,7 @@ export default function DenSpaceApp() {
             <p>Your Den</p>
             <h1>{authMode === "sign-up" ? "Create your DenSpace account" : "Sign in to DenSpace"}</h1>
           </div>
-          <form className="email-auth-form" onSubmit={handleAuthSubmit}>
+          <form className="email-auth-form" onSubmit={handleAuthSubmit} noValidate>
             {authMode === "sign-up" && (
               <label>
                 <span>Display name</span>
@@ -227,7 +241,9 @@ export default function DenSpaceApp() {
               <input checked={authForm.remember} onChange={(event) => setAuthForm({ ...authForm, remember: event.target.checked })} name="rememberMe" type="checkbox" />
               <span>Remember me</span>
             </label>
-            <button className="email-signup-button" type="submit"><Mail /> {authMode === "sign-up" ? "Sign up with email" : "Sign in with email"}</button>
+            <button className="email-signup-button" type="submit" disabled={isAuthSubmitting}>
+              <Mail /> {isAuthSubmitting ? (authMode === "sign-up" ? "Creating account..." : "Signing in...") : (authMode === "sign-up" ? "Sign up with email" : "Sign in with email")}
+            </button>
             <div className="auth-mode-row">
               <button className="secondary-auth-button" type="button" onClick={() => setAuthMode(authMode === "sign-up" ? "sign-in" : "sign-up")}>
                 {authMode === "sign-up" ? "Already have an account?" : "Need an account?"}

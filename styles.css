@@ -196,6 +196,11 @@ body::before {
   height: 18px;
 }
 
+.email-signup-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .auth-mode-row {
   display: flex;
   justify-content: center;
