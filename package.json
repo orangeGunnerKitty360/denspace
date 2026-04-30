@@ -1,0 +1,22 @@
+{
+  "name": "denspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@neondatabase/auth": "^0.3.0-beta",
+    "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.3.3",
+    "lucide-react": "^1.14.0",
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "vercel": "latest"
+  }
+}
