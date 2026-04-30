@@ -653,7 +653,7 @@ export default function DenSpaceApp() {
             <img src="/assets/frutiger-aero-banner.png" alt="Glossy Frutiger Aero community lounge illustration" />
             <div className="hero-overlay">
               <p>Your Den</p>
-              <h1>Start Your Feed</h1>
+              <h1>Welcome to DenSpace</h1>
               <div className="hero-meta">
                 <span><LockKeyhole /> Neon Auth</span>
                 <span><Upload /> Vercel Blob uploads</span>
