@@ -51,7 +51,6 @@ export async function GET(request) {
         FROM post_comments
         WHERE post_id = posts.id
         ORDER BY created_at ASC
-        LIMIT 20
       ) AS limited_comments
     ) AS comment_rows ON true
     WHERE (${kind} = 'all' OR posts.kind = ${kind})

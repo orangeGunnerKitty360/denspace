@@ -446,9 +446,9 @@ export default function DenSpaceApp() {
                       <div className="comments-header">
                         <span><MessageCircle /> {(post.comments || []).length} {(post.comments || []).length === 1 ? "comment" : "comments"}</span>
                       </div>
-                      {(post.comments || []).length > 0 && (
-                        <div className="comment-list">
-                          {(post.comments || []).map((comment) => (
+                      <div className="comment-list">
+                        {(post.comments || []).length ? (
+                          (post.comments || []).map((comment) => (
                             <article className="comment" key={comment.id}>
                               <div className="comment-avatar">{comment.avatar}</div>
                               <div>
@@ -460,9 +460,11 @@ export default function DenSpaceApp() {
                                 <p>{comment.text}</p>
                               </div>
                             </article>
-                          ))}
-                        </div>
-                      )}
+                          ))
+                        ) : (
+                          <p className="comment-empty">No comments yet.</p>
+                        )}
+                      </div>
                       <div className="comment-form">
                         <textarea
                           value={commentDrafts[post.id] || ""}
