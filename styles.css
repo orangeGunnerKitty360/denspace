@@ -1104,6 +1104,92 @@ button {
   color: #004a75;
 }
 
+.chat-screen {
+  display: grid;
+  gap: 18px;
+}
+
+.screen-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 14px;
+}
+
+.screen-heading p,
+.screen-heading h1 {
+  margin: 0;
+}
+
+.screen-heading p {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.screen-heading h1 {
+  color: #004a75;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+}
+
+.screen-heading .ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.screen-heading .ghost-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.chat-screen-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 340px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.chat-directory,
+.chat-room-screen {
+  min-height: 640px;
+}
+
+.chat-room-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(260px, 1fr) auto auto;
+  gap: 12px;
+  padding: 14px;
+}
+
+.screen-room-head {
+  padding: 12px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(216,248,255,0.56));
+  border: 1px solid rgba(255,255,255,0.72);
+  box-shadow: inset 0 1px rgba(255,255,255,0.86);
+}
+
+.screen-list {
+  max-height: 520px;
+}
+
+.screen-messages {
+  max-height: none;
+  min-height: 260px;
+  align-content: start;
+  padding: 12px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.45), rgba(208,247,255,0.24));
+  border: 1px solid rgba(255,255,255,0.58);
+}
+
+.room-empty {
+  align-self: center;
+}
+
 .chat-panel {
   display: grid;
   gap: 12px;
@@ -1420,6 +1506,19 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .chat-screen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-directory,
+  .chat-room-screen {
+    min-height: auto;
+  }
+
+  .screen-list {
+    max-height: 320px;
+  }
+
   .right-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1482,6 +1581,15 @@ button {
 
   .top-auth-button {
     width: 100%;
+  }
+
+  .screen-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .screen-heading .ghost-button {
+    justify-content: center;
   }
 
   .hero {

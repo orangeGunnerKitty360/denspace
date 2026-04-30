@@ -77,6 +77,7 @@ export default function DenSpaceApp() {
   const { data: session, isPending, refetch } = authClient.useSession();
   const user = session?.user || null;
   const displayUser = getDisplayUser(user);
+  const [activeScreen, setActiveScreen] = useState("home");
   const [authMode, setAuthMode] = useState("sign-up");
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "", remember: true });
   const [authNote, setAuthNote] = useState("Your account and sessions are handled by Neon Auth.");
@@ -494,13 +495,13 @@ export default function DenSpaceApp() {
 
       <div className="app-shell">
         <aside className="sidebar" aria-label="Primary">
-          <a className="brand" href="#" aria-label="DenSpace home">
+          <a className="brand" href="#" aria-label="DenSpace home" onClick={(event) => { event.preventDefault(); setActiveScreen("home"); }}>
             <span className="brand-mark">D</span>
             <span>DenSpace</span>
           </a>
           <nav className="nav-list" aria-label="Sections">
-            <button className="nav-item active" type="button"><Home /><span>Home</span></button>
-            <button className="nav-item" type="button"><UsersRound /><span>Circles</span></button>
+            <button className={`nav-item ${activeScreen === "home" ? "active" : ""}`} type="button" onClick={() => setActiveScreen("home")}><Home /><span>Home</span></button>
+            <button className={`nav-item ${activeScreen === "chats" ? "active" : ""}`} type="button" onClick={() => setActiveScreen("chats")}><MessageCircle /><span>Chats</span></button>
             <button className="nav-item" type="button"><CalendarDays /><span>Meetups</span></button>
             <button className="nav-item" type="button"><Palette /><span>Studio</span></button>
             <button className="nav-item" type="button"><ShieldCheck /><span>Safety</span></button>
@@ -527,10 +528,127 @@ export default function DenSpaceApp() {
             <div className="top-actions">
               <button className="top-auth-button" type="button" onClick={user ? handleSignOut : () => setAuthNote("Sign in or create an account to continue.")}>{user ? <LogOut /> : <LogIn />} {user ? "Sign out" : "Sign in"}</button>
               <button className="icon-button" type="button" aria-label="Notifications"><Bell /></button>
-              <button className="icon-button" type="button" aria-label="Messages"><MessageCircle /></button>
+              <button className="icon-button" type="button" aria-label="Group chats" onClick={() => setActiveScreen("chats")}><MessageCircle /></button>
             </div>
           </header>
 
+          {activeScreen === "chats" ? (
+            <section className="chat-screen" aria-label="Group chats screen">
+              <div className="screen-heading">
+                <div>
+                  <p>Messages</p>
+                  <h1>Group Chats</h1>
+                </div>
+                <button className="ghost-button" type="button" onClick={() => setActiveScreen("home")}><Home /> Feed</button>
+              </div>
+
+              <div className="chat-screen-grid">
+                <section className="panel chat-directory" aria-label="Group chat list">
+                  <div className="panel-header">
+                    <h2>Chats</h2>
+                    <span className="chat-count">{chats.length}</span>
+                  </div>
+                  <div className="chat-create">
+                    <input
+                      className="chat-icon-input"
+                      value={chatForm.icon}
+                      onChange={(event) => setChatForm({ ...chatForm, icon: event.target.value })}
+                      maxLength="6"
+                      aria-label="New group chat icon"
+                      placeholder="GC"
+                      disabled={!user || isCreatingChat}
+                    />
+                    <input
+                      value={chatForm.name}
+                      onChange={(event) => setChatForm({ ...chatForm, name: event.target.value })}
+                      maxLength="42"
+                      aria-label="New group chat name"
+                      placeholder="Group chat name"
+                      disabled={!user || isCreatingChat}
+                    />
+                    <button className="ghost-button" type="button" onClick={createChat} disabled={!user || isCreatingChat}>{isCreatingChat ? "Making" : "New"}</button>
+                  </div>
+                  <div className="chat-list screen-list">
+                    {chats.length ? chats.map((chat) => (
+                      <button className={`chat-list-item ${chat.id === selectedChatId ? "active" : ""}`} type="button" key={chat.id} onClick={() => setSelectedChatId(chat.id)}>
+                        <span className="chat-icon">{chat.icon}</span>
+                        <span>
+                          <strong>{chat.name}</strong>
+                          <small>{chat.latestMessage || "No messages yet"}</small>
+                        </span>
+                        <em>{chat.messageCount}</em>
+                      </button>
+                    )) : (
+                      <div className="chat-empty"><strong>No group chats yet</strong><span>Create one when you are ready.</span></div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="panel chat-room-screen" aria-label={activeChat ? `${activeChat.name} group chat` : "Selected group chat"}>
+                  {activeChat ? (
+                    <>
+                      <div className="chat-room-head screen-room-head">
+                        <span className="chat-icon large">{activeChat.icon}</span>
+                        <div>
+                          <strong>{activeChat.name}</strong>
+                          <span>{activeChat.messageCount} {activeChat.messageCount === 1 ? "message" : "messages"}</span>
+                        </div>
+                      </div>
+                      <div className="chat-edit">
+                        <input
+                          className="chat-icon-input"
+                          value={chatEditForm.icon}
+                          onChange={(event) => setChatEditForm({ ...chatEditForm, icon: event.target.value })}
+                          maxLength="6"
+                          aria-label="Edit group chat icon"
+                          disabled={!user || isSavingChat}
+                        />
+                        <input
+                          value={chatEditForm.name}
+                          onChange={(event) => setChatEditForm({ ...chatEditForm, name: event.target.value })}
+                          maxLength="42"
+                          aria-label="Edit group chat name"
+                          disabled={!user || isSavingChat}
+                        />
+                        <button className="ghost-button" type="button" onClick={saveChatDetails} disabled={!user || isSavingChat}>{isSavingChat ? "Saving" : "Save"}</button>
+                      </div>
+                      <div className="chat-messages screen-messages" aria-label={`${activeChat.name} messages`}>
+                        {chatMessages.length ? chatMessages.map((message) => (
+                          <article className="chat-message" key={message.id}>
+                            <span className="comment-avatar">{message.avatar}</span>
+                            <div>
+                              <div className="comment-author-line">
+                                <strong>{message.author}</strong>
+                                <span>{message.time}</span>
+                              </div>
+                              <p>{message.text}</p>
+                            </div>
+                          </article>
+                        )) : (
+                          <p className="comment-empty">No messages yet.</p>
+                        )}
+                      </div>
+                      <div className="chat-send">
+                        <textarea
+                          value={chatDraft}
+                          onChange={(event) => setChatDraft(event.target.value)}
+                          rows="2"
+                          maxLength="420"
+                          placeholder={user ? "Message the group" : "Sign in to chat"}
+                          disabled={!user || isSendingChat}
+                        />
+                        <button className="comment-button" type="button" onClick={sendChatMessage} disabled={!user || isSendingChat}><Send /> {isSendingChat ? "Sending" : "Send"}</button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="chat-empty room-empty"><strong>No chat selected</strong><span>Create a group chat or pick one from the list.</span></div>
+                  )}
+                  {chatNote && <p className="composer-status">{chatNote}</p>}
+                </section>
+              </div>
+            </section>
+          ) : (
+            <>
           <section className="hero" aria-label="Community spotlight">
             <img src="/assets/frutiger-aero-banner.png" alt="Glossy Frutiger Aero community lounge illustration" />
             <div className="hero-overlay">
@@ -665,104 +783,6 @@ export default function DenSpaceApp() {
             </section>
 
             <aside className="right-rail">
-              <section className="panel chat-panel" aria-label="Group chats">
-                <div className="panel-header">
-                  <h2>Group Chats</h2>
-                  <span className="chat-count">{chats.length}</span>
-                </div>
-                <div className="chat-create">
-                  <input
-                    className="chat-icon-input"
-                    value={chatForm.icon}
-                    onChange={(event) => setChatForm({ ...chatForm, icon: event.target.value })}
-                    maxLength="6"
-                    aria-label="New group chat icon"
-                    placeholder="GC"
-                    disabled={!user || isCreatingChat}
-                  />
-                  <input
-                    value={chatForm.name}
-                    onChange={(event) => setChatForm({ ...chatForm, name: event.target.value })}
-                    maxLength="42"
-                    aria-label="New group chat name"
-                    placeholder="Group chat name"
-                    disabled={!user || isCreatingChat}
-                  />
-                  <button className="ghost-button" type="button" onClick={createChat} disabled={!user || isCreatingChat}>{isCreatingChat ? "Making" : "New"}</button>
-                </div>
-                <div className="chat-list">
-                  {chats.length ? chats.map((chat) => (
-                    <button className={`chat-list-item ${chat.id === selectedChatId ? "active" : ""}`} type="button" key={chat.id} onClick={() => setSelectedChatId(chat.id)}>
-                      <span className="chat-icon">{chat.icon}</span>
-                      <span>
-                        <strong>{chat.name}</strong>
-                        <small>{chat.latestMessage || "No messages yet"}</small>
-                      </span>
-                      <em>{chat.messageCount}</em>
-                    </button>
-                  )) : (
-                    <div className="chat-empty"><strong>No group chats yet</strong><span>Create one when you are ready.</span></div>
-                  )}
-                </div>
-                {activeChat && (
-                  <div className="chat-room">
-                    <div className="chat-room-head">
-                      <span className="chat-icon large">{activeChat.icon}</span>
-                      <div>
-                        <strong>{activeChat.name}</strong>
-                        <span>{activeChat.messageCount} {activeChat.messageCount === 1 ? "message" : "messages"}</span>
-                      </div>
-                    </div>
-                    <div className="chat-edit">
-                      <input
-                        className="chat-icon-input"
-                        value={chatEditForm.icon}
-                        onChange={(event) => setChatEditForm({ ...chatEditForm, icon: event.target.value })}
-                        maxLength="6"
-                        aria-label="Edit group chat icon"
-                        disabled={!user || isSavingChat}
-                      />
-                      <input
-                        value={chatEditForm.name}
-                        onChange={(event) => setChatEditForm({ ...chatEditForm, name: event.target.value })}
-                        maxLength="42"
-                        aria-label="Edit group chat name"
-                        disabled={!user || isSavingChat}
-                      />
-                      <button className="ghost-button" type="button" onClick={saveChatDetails} disabled={!user || isSavingChat}>{isSavingChat ? "Saving" : "Save"}</button>
-                    </div>
-                    <div className="chat-messages" aria-label={`${activeChat.name} messages`}>
-                      {chatMessages.length ? chatMessages.map((message) => (
-                        <article className="chat-message" key={message.id}>
-                          <span className="comment-avatar">{message.avatar}</span>
-                          <div>
-                            <div className="comment-author-line">
-                              <strong>{message.author}</strong>
-                              <span>{message.time}</span>
-                            </div>
-                            <p>{message.text}</p>
-                          </div>
-                        </article>
-                      )) : (
-                        <p className="comment-empty">No messages yet.</p>
-                      )}
-                    </div>
-                    <div className="chat-send">
-                      <textarea
-                        value={chatDraft}
-                        onChange={(event) => setChatDraft(event.target.value)}
-                        rows="2"
-                        maxLength="420"
-                        placeholder={user ? "Message the group" : "Sign in to chat"}
-                        disabled={!user || isSendingChat}
-                      />
-                      <button className="comment-button" type="button" onClick={sendChatMessage} disabled={!user || isSendingChat}><Send /> {isSendingChat ? "Sending" : "Send"}</button>
-                    </div>
-                  </div>
-                )}
-                {chatNote && <p className="composer-status">{chatNote}</p>}
-              </section>
-
               <section className="panel">
                 <div className="panel-header">
                   <h2>Your Meetups</h2>
@@ -794,6 +814,8 @@ export default function DenSpaceApp() {
               </section>
             </aside>
           </div>
+            </>
+          )}
         </main>
       </div>
     </>
