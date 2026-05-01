@@ -103,8 +103,24 @@ export default function DenSpaceApp() {
   const [feedNote, setFeedNote] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [banNotice, setBanNotice] = useState(null);
 
   const authVisible = !isPending && !user;
+  const isBanned = Boolean(user && banNotice);
+
+  function showBanFromResponse(status, data) {
+    const banText = `${data?.error || ""} ${data?.details || ""}`;
+    if (status !== 403 || !/ban/i.test(banText)) {
+      return false;
+    }
+
+    setBanNotice({
+      error: data?.error || "This account has been permanently banned.",
+      details: data?.details || "This account cannot use DenSpace.",
+      permanent: data?.permanent !== false
+    });
+    return true;
+  }
 
   const fetchPosts = async () => {
     const params = new URLSearchParams({ filter: activeFilter, q: search });
@@ -160,6 +176,32 @@ export default function DenSpaceApp() {
   useEffect(() => {
     fetchChatMessages(selectedChatId);
   }, [selectedChatId]);
+
+  useEffect(() => {
+    if (!user) {
+      setBanNotice(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const checkBanStatus = async () => {
+      const response = await fetch("/api/account/status");
+      const data = await response.json().catch(() => ({}));
+
+      if (cancelled || !response.ok) return;
+
+      setBanNotice(data.banned ? {
+        error: data.error || "This account has been permanently banned.",
+        details: data.details || data.reason || "This account cannot use DenSpace.",
+        permanent: data.permanent !== false
+      } : null);
+    };
+
+    checkBanStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!selectedUpload) {
@@ -242,6 +284,7 @@ export default function DenSpaceApp() {
 
   async function handleSignOut() {
     await authClient.signOut();
+    setBanNotice(null);
     await refetch();
   }
 
@@ -273,6 +316,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (showBanFromResponse(response.status, data)) return;
       setFeedNote(data.details || data.error || "The post could not be saved yet.");
       return;
     }
@@ -297,6 +341,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (showBanFromResponse(response.status, data)) return;
       setFeedNote(data.details || data.error || "The reaction could not be saved yet.");
       return;
     }
@@ -330,6 +375,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (showBanFromResponse(response.status, data)) return;
       setFeedNote(data.details || data.error || "The comment could not be saved yet.");
       return;
     }
@@ -368,6 +414,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (showBanFromResponse(response.status, data)) return;
       setChatNote(data.details || data.error || "The group chat could not be created yet.");
       return;
     }
@@ -404,6 +451,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (showBanFromResponse(response.status, data)) return;
       setChatNote(data.details || data.error || "The group chat could not be updated yet.");
       return;
     }
@@ -443,6 +491,7 @@ export default function DenSpaceApp() {
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
+      if (showBanFromResponse(response.status, data)) return;
       setChatNote(data.details || data.error || "The message could not be sent yet.");
       return;
     }
@@ -498,6 +547,26 @@ export default function DenSpaceApp() {
         </div>
       </section>
 
+      {isBanned ? (
+        <section className="ban-screen" aria-label="Account banned">
+          <div className="ban-card">
+            <span className="brand-mark">D</span>
+            <div>
+              <p>Account status</p>
+              <h1>Account banned</h1>
+            </div>
+            <div className="ban-status">
+              <ShieldCheck />
+              <span>{banNotice.permanent ? "Permanent ban" : "Account restricted"}</span>
+            </div>
+            <p className="ban-message">{banNotice.error}</p>
+            <p className="auth-note">{banNotice.details}</p>
+            <button className="email-signup-button" type="button" onClick={handleSignOut}>
+              <LogOut /> Sign out
+            </button>
+          </div>
+        </section>
+      ) : (
       <div className="app-shell">
         <aside className="sidebar" aria-label="Primary">
           <a className="brand" href="#" aria-label="DenSpace home" onClick={(event) => { event.preventDefault(); setActiveScreen("home"); }}>
@@ -823,6 +892,7 @@ export default function DenSpaceApp() {
           )}
         </main>
       </div>
+      )}
     </>
   );
 }
