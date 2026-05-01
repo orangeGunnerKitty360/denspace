@@ -148,7 +148,7 @@ export default function DenSpaceApp() {
   const banAudioBufferRef = useRef(null);
   const banAudioContextRef = useRef(null);
   const banAudioSourceRef = useRef(null);
-  const banAudioUnlockedRef = useRef(false);
+  const banAudioElementRef = useRef(null);
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
@@ -278,26 +278,6 @@ export default function DenSpaceApp() {
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
-    const unlockOnInteraction = () => {
-      unlockBanSound().then(() => {
-        if (isBanned) playBanSound();
-      });
-    };
-
-    window.addEventListener("pointerdown", unlockOnInteraction);
-    window.addEventListener("keydown", unlockOnInteraction);
-    window.addEventListener("touchstart", unlockOnInteraction);
-
-    return () => {
-      window.removeEventListener("pointerdown", unlockOnInteraction);
-      window.removeEventListener("keydown", unlockOnInteraction);
-      window.removeEventListener("touchstart", unlockOnInteraction);
-    };
-  }, [isBanned]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
     loadBanSoundBuffer().catch(() => {});
     return undefined;
   }, []);
@@ -363,7 +343,6 @@ export default function DenSpaceApp() {
 
   async function handleAuthSubmit(event) {
     event.preventDefault();
-    unlockBanSound();
     setAuthNote("Checking your account...");
 
     const email = authForm.email.trim().toLowerCase();
@@ -449,27 +428,10 @@ export default function DenSpaceApp() {
     return banAudioBufferRef.current;
   }
 
-  async function unlockBanSound() {
-    if (banAudioUnlockedRef.current) return true;
-
-    const context = getBanAudioContext();
-    if (!context) return false;
-
-    try {
-      await context.resume();
-      banAudioUnlockedRef.current = context.state === "running";
-      loadBanSoundBuffer().catch(() => {});
-      return banAudioUnlockedRef.current;
-    } catch {
-      // The next real user interaction will try again.
-      loadBanSoundBuffer().catch(() => {});
-      return false;
-    }
-  }
-
   async function playBanSoundWithElement() {
     try {
-      const audio = new Audio(banSound);
+      const audio = banAudioElementRef.current || new Audio(banSound);
+      banAudioElementRef.current = audio;
       audio.preload = "auto";
       audio.volume = 1;
       audio.currentTime = 0;
@@ -507,6 +469,11 @@ export default function DenSpaceApp() {
   }
 
   function stopBanSound() {
+    if (banAudioElementRef.current) {
+      banAudioElementRef.current.pause();
+      banAudioElementRef.current.currentTime = 0;
+    }
+
     if (!banAudioSourceRef.current) return;
 
     try {
@@ -575,8 +542,6 @@ export default function DenSpaceApp() {
       setFeedNote("Add text or an image before posting.");
       return;
     }
-
-    unlockBanSound();
     setIsPosting(true);
     setFeedNote("");
     const formData = new FormData();
@@ -609,8 +574,6 @@ export default function DenSpaceApp() {
       setAuthNote("Sign in before reacting.");
       return;
     }
-
-    unlockBanSound();
     const response = await fetch(`/api/posts/${postId}/reactions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -639,8 +602,6 @@ export default function DenSpaceApp() {
       setFeedNote("Write a comment before sending.");
       return;
     }
-
-    unlockBanSound();
     setCommentingPosts((current) => ({ ...current, [postId]: true }));
     setFeedNote("");
 
@@ -679,8 +640,6 @@ export default function DenSpaceApp() {
       setChatNote("Name the group chat first.");
       return;
     }
-
-    unlockBanSound();
     setIsCreatingChat(true);
     setChatNote("");
 
@@ -717,8 +676,6 @@ export default function DenSpaceApp() {
       setChatNote("Name the group chat first.");
       return;
     }
-
-    unlockBanSound();
     setIsSavingChat(true);
     setChatNote("");
 
@@ -758,8 +715,6 @@ export default function DenSpaceApp() {
       setChatNote("Write a message before sending.");
       return;
     }
-
-    unlockBanSound();
     setIsSendingChat(true);
     setChatNote("");
 
@@ -836,6 +791,7 @@ export default function DenSpaceApp() {
 
       {isBanned ? (
         <section className="ban-screen" aria-label="Account banned">
+          <audio ref={banAudioElementRef} src={banSound} autoPlay preload="auto" aria-hidden="true" />
           <div className="ban-card">
             <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
             <div>
