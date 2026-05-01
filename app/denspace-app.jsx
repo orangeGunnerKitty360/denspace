@@ -28,6 +28,7 @@ import { authClient } from "../lib/auth/client";
 const events = [];
 const postKinds = ["art", "meetup", "making"];
 const ownerNames = new Set(["frutigerfloppa"]);
+const denSpaceIcon = "/assets/denspace-icon.png";
 
 function isOwnerName(name) {
   return ownerNames.has(String(name || "").trim().toLowerCase());
@@ -510,7 +511,7 @@ export default function DenSpaceApp() {
     <>
       <section id="authGate" className={`auth-gate ${authVisible ? "" : "hidden"}`} aria-label="Sign in">
         <div className="auth-card">
-          <span className="brand-mark">D</span>
+          <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
           <div>
             <p>Your Den</p>
             <h1>{authMode === "sign-up" ? "Create your DenSpace account" : "Sign in to DenSpace"}</h1>
@@ -550,7 +551,7 @@ export default function DenSpaceApp() {
       {isBanned ? (
         <section className="ban-screen" aria-label="Account banned">
           <div className="ban-card">
-            <span className="brand-mark">D</span>
+            <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
             <div>
               <p>Account status</p>
               <h1>Account banned</h1>
@@ -570,7 +571,7 @@ export default function DenSpaceApp() {
       <div className="app-shell">
         <aside className="sidebar" aria-label="Primary">
           <a className="brand" href="#" aria-label="DenSpace home" onClick={(event) => { event.preventDefault(); setActiveScreen("home"); }}>
-            <span className="brand-mark">D</span>
+            <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
             <span>DenSpace</span>
           </a>
           <nav className="nav-list" aria-label="Sections">
