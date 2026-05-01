@@ -145,7 +145,9 @@ export default function DenSpaceApp() {
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [installDevice, setInstallDevice] = useState("phone");
   const [isStandalone, setIsStandalone] = useState(false);
-  const banAudioRef = useRef(null);
+  const banAudioBufferRef = useRef(null);
+  const banAudioContextRef = useRef(null);
+  const banAudioSourceRef = useRef(null);
   const banAudioUnlockedRef = useRef(false);
 
   const authVisible = !isPending && !user;
@@ -249,10 +251,7 @@ export default function DenSpaceApp() {
 
   useEffect(() => {
     if (!isBanned || typeof window === "undefined") {
-      if (banAudioRef.current) {
-        banAudioRef.current.pause();
-        banAudioRef.current.currentTime = 0;
-      }
+      stopBanSound();
       return;
     }
 
@@ -268,19 +267,21 @@ export default function DenSpaceApp() {
     if (typeof window === "undefined") return undefined;
 
     const unlockOnInteraction = () => {
-      unlockBanSound();
+      unlockBanSound().then(() => {
+        if (isBanned) playBanSound();
+      });
     };
 
-    window.addEventListener("pointerdown", unlockOnInteraction, { once: true });
-    window.addEventListener("keydown", unlockOnInteraction, { once: true });
-    window.addEventListener("touchstart", unlockOnInteraction, { once: true });
+    window.addEventListener("pointerdown", unlockOnInteraction);
+    window.addEventListener("keydown", unlockOnInteraction);
+    window.addEventListener("touchstart", unlockOnInteraction);
 
     return () => {
       window.removeEventListener("pointerdown", unlockOnInteraction);
       window.removeEventListener("keydown", unlockOnInteraction);
       window.removeEventListener("touchstart", unlockOnInteraction);
     };
-  }, []);
+  }, [isBanned]);
 
   useEffect(() => {
     if (!selectedUpload) {
@@ -403,52 +404,79 @@ export default function DenSpaceApp() {
     await refetch();
   }
 
-  function getBanAudio() {
+  function getBanAudioContext() {
     if (typeof window === "undefined") return null;
-    if (!banAudioRef.current) {
-      const audio = new Audio(banSound);
-      audio.preload = "auto";
-      audio.volume = 0.9;
-      banAudioRef.current = audio;
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!banAudioContextRef.current) {
+      banAudioContextRef.current = new AudioContextClass();
     }
 
-    return banAudioRef.current;
+    return banAudioContextRef.current;
+  }
+
+  async function loadBanSoundBuffer() {
+    if (banAudioBufferRef.current) return banAudioBufferRef.current;
+
+    const context = getBanAudioContext();
+    if (!context) return null;
+
+    const response = await fetch(banSound);
+    const data = await response.arrayBuffer();
+    banAudioBufferRef.current = await context.decodeAudioData(data);
+    return banAudioBufferRef.current;
   }
 
   async function unlockBanSound() {
     if (banAudioUnlockedRef.current) return;
 
-    const audio = getBanAudio();
-    if (!audio) return;
+    const context = getBanAudioContext();
+    if (!context) return;
 
     try {
-      audio.muted = true;
-      audio.volume = 0;
-      await audio.play();
-      audio.pause();
-      audio.currentTime = 0;
-      audio.muted = false;
-      audio.volume = 0.9;
+      await loadBanSoundBuffer();
+      await context.resume();
       banAudioUnlockedRef.current = true;
     } catch {
-      audio.muted = false;
-      audio.volume = 0.9;
+      // The next real user interaction will try again.
     }
   }
 
   async function playBanSound() {
-    const audio = getBanAudio();
-    if (!audio) return;
-
-    audio.currentTime = 0;
-    audio.muted = false;
-    audio.volume = 0.9;
-
     try {
-      await audio.play();
+      const context = getBanAudioContext();
+      if (!context) return;
+
+      await context.resume();
+      const buffer = await loadBanSoundBuffer();
+      if (!buffer) return;
+
+      stopBanSound();
+
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      gain.gain.value = 0.9;
+      source.buffer = buffer;
+      source.connect(gain);
+      gain.connect(context.destination);
+      source.start(0);
+      banAudioSourceRef.current = source;
     } catch {
       // Some browsers block autoplay until the user has interacted with the page.
     }
+  }
+
+  function stopBanSound() {
+    if (!banAudioSourceRef.current) return;
+
+    try {
+      banAudioSourceRef.current.stop();
+    } catch {
+      // The sound may have already ended.
+    }
+    banAudioSourceRef.current = null;
   }
 
   async function handleMobileDownload() {
