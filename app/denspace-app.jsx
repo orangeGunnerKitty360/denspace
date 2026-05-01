@@ -146,6 +146,7 @@ export default function DenSpaceApp() {
   const [installDevice, setInstallDevice] = useState("phone");
   const [isStandalone, setIsStandalone] = useState(false);
   const banAudioRef = useRef(null);
+  const banAudioUnlockedRef = useRef(false);
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
@@ -262,6 +263,24 @@ export default function DenSpaceApp() {
     window.sessionStorage.setItem("denspaceLastBanSoundAt", String(now));
     playBanSound();
   }, [isBanned, user?.id, banNotice?.error, banNotice?.details]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const unlockOnInteraction = () => {
+      unlockBanSound();
+    };
+
+    window.addEventListener("pointerdown", unlockOnInteraction, { once: true });
+    window.addEventListener("keydown", unlockOnInteraction, { once: true });
+    window.addEventListener("touchstart", unlockOnInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockOnInteraction);
+      window.removeEventListener("keydown", unlockOnInteraction);
+      window.removeEventListener("touchstart", unlockOnInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedUpload) {
@@ -384,11 +403,45 @@ export default function DenSpaceApp() {
     await refetch();
   }
 
+  function getBanAudio() {
+    if (typeof window === "undefined") return null;
+    if (!banAudioRef.current) {
+      const audio = new Audio(banSound);
+      audio.preload = "auto";
+      audio.volume = 0.9;
+      banAudioRef.current = audio;
+    }
+
+    return banAudioRef.current;
+  }
+
+  async function unlockBanSound() {
+    if (banAudioUnlockedRef.current) return;
+
+    const audio = getBanAudio();
+    if (!audio) return;
+
+    try {
+      audio.muted = true;
+      audio.volume = 0;
+      await audio.play();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+      audio.volume = 0.9;
+      banAudioUnlockedRef.current = true;
+    } catch {
+      audio.muted = false;
+      audio.volume = 0.9;
+    }
+  }
+
   async function playBanSound() {
-    const audio = banAudioRef.current;
+    const audio = getBanAudio();
     if (!audio) return;
 
     audio.currentTime = 0;
+    audio.muted = false;
     audio.volume = 0.9;
 
     try {
@@ -711,7 +764,6 @@ export default function DenSpaceApp() {
 
       {isBanned ? (
         <section className="ban-screen" aria-label="Account banned">
-          <audio ref={banAudioRef} src={banSound} autoPlay preload="auto" aria-hidden="true" />
           <div className="ban-card">
             <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
             <div>
