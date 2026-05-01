@@ -140,6 +140,7 @@ export default function DenSpaceApp() {
   const [isPosting, setIsPosting] = useState(false);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [banNotice, setBanNotice] = useState(null);
+  const [banAudioKey, setBanAudioKey] = useState(0);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installNote, setInstallNote] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
@@ -434,9 +435,15 @@ export default function DenSpaceApp() {
     try {
       const audio = banAudioElementRef.current || new Audio(banSound);
       banAudioElementRef.current = audio;
+      audio.autoplay = true;
+      audio.muted = false;
+      audio.playsInline = true;
       audio.preload = "auto";
       audio.volume = 1;
       audio.currentTime = 0;
+      if (audio.readyState === 0) {
+        audio.load();
+      }
       await audio.play();
       return true;
     } catch {
@@ -482,6 +489,7 @@ export default function DenSpaceApp() {
 
     clearBanSoundRetry();
     stopBanSound();
+    setBanAudioKey((key) => key + 1);
 
     let attempts = 0;
     const retryBanSound = async () => {
@@ -819,7 +827,17 @@ export default function DenSpaceApp() {
 
       {isBanned ? (
         <section className="ban-screen" aria-label="Account banned">
-          <audio ref={banAudioElementRef} src={banSound} autoPlay preload="auto" aria-hidden="true" />
+          <audio
+            key={banAudioKey}
+            ref={banAudioElementRef}
+            src={banSound}
+            autoPlay
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+            onLoadedData={playBanSoundWithElement}
+            onCanPlayThrough={playBanSoundWithElement}
+          />
           <div className="ban-card">
             <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
             <div>
