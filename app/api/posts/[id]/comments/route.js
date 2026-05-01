@@ -1,7 +1,6 @@
 import { ensureSchema, getSql } from "../../../../../lib/db";
 import { getAuth } from "../../../../../lib/auth/server";
 import { serializeComment } from "../../../../../lib/posts";
-import { moderatePostContent } from "../../../../../lib/moderation";
 import { enforceCommentHateAutoBan, enforceUserBanStatus } from "../../../../../lib/user-bans";
 
 export const runtime = "nodejs";
@@ -29,15 +28,6 @@ export async function POST(request, { params }) {
 
   const hateBan = await enforceCommentHateAutoBan(db, user, { text });
   if (hateBan.banned) return hateBan.response;
-
-  const moderation = await moderatePostContent({ text });
-
-  if (!moderation.allowed) {
-    return Response.json({
-      error: "This comment was blocked by moderation.",
-      details: moderation.reason
-    }, { status: 422 });
-  }
 
   const post = await db`
     SELECT id
