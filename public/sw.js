@@ -6,6 +6,7 @@ const APP_SHELL = [
   "/assets/denspace-icon-180.png",
   "/assets/denspace-icon-192.png",
   "/assets/denspace-icon-512.png",
+  "/assets/ban-error.mp3",
   "/assets/frutiger-aero-banner.png"
 ];
 

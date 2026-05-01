@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   CalendarDays,
@@ -30,6 +30,7 @@ const events = [];
 const postKinds = ["art", "meetup", "making"];
 const ownerNames = new Set(["frutigerfloppa"]);
 const denSpaceIcon = "/assets/denspace-icon.png";
+const banSound = "/assets/ban-error.mp3";
 const liveAppUrl = "https://denspace.vercel.app/";
 const iphoneProfileUrl = "https://denspace.vercel.app/iphone-profile.mobileconfig";
 
@@ -144,6 +145,8 @@ export default function DenSpaceApp() {
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [installDevice, setInstallDevice] = useState("phone");
   const [isStandalone, setIsStandalone] = useState(false);
+  const [banSoundBlocked, setBanSoundBlocked] = useState(false);
+  const banAudioRef = useRef(null);
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
@@ -243,6 +246,20 @@ export default function DenSpaceApp() {
       cancelled = true;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!isBanned || typeof window === "undefined") {
+      setBanSoundBlocked(false);
+      return;
+    }
+
+    const now = Date.now();
+    const lastPlayed = Number(window.sessionStorage.getItem("denspaceLastBanSoundAt") || 0);
+    if (now - lastPlayed < 1200) return;
+
+    window.sessionStorage.setItem("denspaceLastBanSoundAt", String(now));
+    playBanSound();
+  }, [isBanned, user?.id, banNotice?.error, banNotice?.details]);
 
   useEffect(() => {
     if (!selectedUpload) {
@@ -363,6 +380,20 @@ export default function DenSpaceApp() {
     await authClient.signOut();
     setBanNotice(null);
     await refetch();
+  }
+
+  async function playBanSound() {
+    const audio = banAudioRef.current || new Audio(banSound);
+    banAudioRef.current = audio;
+    audio.currentTime = 0;
+    audio.volume = 0.9;
+
+    try {
+      await audio.play();
+      setBanSoundBlocked(false);
+    } catch {
+      setBanSoundBlocked(true);
+    }
   }
 
   async function handleMobileDownload() {
@@ -690,6 +721,11 @@ export default function DenSpaceApp() {
             </div>
             <p className="ban-message">{banNotice.error}</p>
             <p className="auth-note">{banNotice.details}</p>
+            {banSoundBlocked && (
+              <button className="email-signup-button" type="button" onClick={playBanSound}>
+                <Bell /> Play ban sound
+              </button>
+            )}
             <button className="email-signup-button" type="button" onClick={handleSignOut}>
               <LogOut /> Sign out
             </button>
