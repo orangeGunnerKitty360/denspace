@@ -3,6 +3,7 @@ import { ensureSchema, getSql } from "../../../lib/db";
 import { getAuth } from "../../../lib/auth/server";
 import { POST_KINDS, serializePost } from "../../../lib/posts";
 import { moderatePostContent } from "../../../lib/moderation";
+import { enforceContentAutoBan, enforceUserBanStatus } from "../../../lib/user-bans";
 
 export const runtime = "nodejs";
 
@@ -75,6 +76,10 @@ export async function POST(request) {
   }
 
   await ensureSchema();
+  const db = getSql();
+  const banStatus = await enforceUserBanStatus(db, user);
+  if (banStatus.blocked) return banStatus.response;
+
   const formData = await request.formData();
   const text = String(formData.get("text") || "").trim().slice(0, 280);
   const kind = String(formData.get("kind") || "art");
@@ -86,6 +91,11 @@ export async function POST(request) {
 
   if (!text && !(file instanceof File && file.size > 0)) {
     return Response.json({ error: "Add text or an image before posting." }, { status: 400 });
+  }
+
+  if (text) {
+    const contentBan = await enforceContentAutoBan(db, user, { text, context: "post" });
+    if (contentBan.banned) return contentBan.response;
   }
 
   const moderation = await moderatePostContent({
@@ -114,7 +124,6 @@ export async function POST(request) {
     });
   }
 
-  const db = getSql();
   const rows = await db`
     INSERT INTO posts (
       user_id,

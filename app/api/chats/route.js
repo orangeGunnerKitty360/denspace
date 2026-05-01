@@ -2,6 +2,7 @@ import { ensureSchema, getSql } from "../../../lib/db";
 import { getAuth } from "../../../lib/auth/server";
 import { normalizeChatIcon, serializeChat } from "../../../lib/chats";
 import { moderatePostContent } from "../../../lib/moderation";
+import { enforceContentAutoBan, enforceUserBanStatus } from "../../../lib/user-bans";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,10 @@ export async function POST(request) {
   }
 
   await ensureSchema();
+  const db = getSql();
+  const banStatus = await enforceUserBanStatus(db, user);
+  if (banStatus.blocked) return banStatus.response;
+
   const { name: rawName, icon: rawIcon } = await request.json();
   const name = String(rawName || "").trim().slice(0, 42);
   const icon = normalizeChatIcon(rawIcon);
@@ -52,6 +57,9 @@ export async function POST(request) {
   if (!name) {
     return Response.json({ error: "Name the group chat first." }, { status: 400 });
   }
+
+  const contentBan = await enforceContentAutoBan(db, user, { text: name, context: "chat name" });
+  if (contentBan.banned) return contentBan.response;
 
   const moderation = await moderatePostContent({ text: name });
   if (!moderation.allowed) {
@@ -61,7 +69,6 @@ export async function POST(request) {
     }, { status: 422 });
   }
 
-  const db = getSql();
   const rows = await db`
     INSERT INTO group_chats (name, icon, created_by)
     VALUES (${name}, ${icon}, ${user.id})

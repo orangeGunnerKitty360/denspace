@@ -295,7 +295,12 @@ export default function DenSpaceApp() {
       body: JSON.stringify({ reaction })
     });
 
-    if (!response.ok) return;
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setFeedNote(data.details || data.error || "The reaction could not be saved yet.");
+      return;
+    }
+
     const data = await response.json();
     setPosts((current) => current.map((post) => post.id === postId ? { ...post, reactions: data.reactions } : post));
   }

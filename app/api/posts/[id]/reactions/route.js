@@ -1,6 +1,7 @@
 import { ensureSchema, getSql } from "../../../../../lib/db";
 import { getAuth } from "../../../../../lib/auth/server";
 import { REACTIONS } from "../../../../../lib/posts";
+import { enforceUserBanStatus } from "../../../../../lib/user-bans";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,10 @@ export async function POST(request, { params }) {
   }
 
   await ensureSchema();
+  const db = getSql();
+  const banStatus = await enforceUserBanStatus(db, user);
+  if (banStatus.blocked) return banStatus.response;
+
   const { id } = await params;
   const { reaction } = await request.json();
 
@@ -20,7 +25,6 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Unknown reaction." }, { status: 400 });
   }
 
-  const db = getSql();
   const existing = await db`
     SELECT 1
     FROM post_reactions
