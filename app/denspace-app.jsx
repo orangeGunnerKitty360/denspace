@@ -31,15 +31,11 @@ const postKinds = ["art", "meetup", "making"];
 const ownerNames = new Set(["frutigerfloppa"]);
 const denSpaceIcon = "/assets/denspace-icon.png";
 const liveAppUrl = "https://denspace.vercel.app/";
+const iphoneProfileUrl = "https://denspace.vercel.app/iphone-profile.mobileconfig";
 
 function isAppleMobileBrowser(navigatorObject) {
   const userAgent = navigatorObject.userAgent || "";
   return /iphone|ipad|ipod/i.test(userAgent) || (navigatorObject.platform === "MacIntel" && navigatorObject.maxTouchPoints > 1);
-}
-
-function getInstallUrl() {
-  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
-  return isLocal ? liveAppUrl : window.location.href.split("#")[0];
 }
 
 function isOwnerName(name) {
@@ -79,11 +75,15 @@ function InstallGuide({ device }) {
         </div>
       </div>
       <ol>
-        <li>{isIphone ? "Open DenSpace in Safari." : "Open DenSpace on your phone."}</li>
-        <li>{isIphone ? "Tap the Share button." : "Open the browser menu."}</li>
-        <li>{isIphone ? "Tap Add to Home Screen." : "Tap Install app or Add to Home screen."}</li>
+        <li>{isIphone ? "Tap Download iPhone Profile." : "Open DenSpace on your phone."}</li>
+        <li>{isIphone ? "Open Settings and tap Profile Downloaded." : "Open the browser menu."}</li>
+        <li>{isIphone ? "Tap Install to add DenSpace." : "Tap Install app or Add to Home screen."}</li>
       </ol>
-      <a className="install-open-link" href={liveAppUrl} target="_blank" rel="noreferrer">Open DenSpace</a>
+      {isIphone ? (
+        <a className="install-open-link" href={iphoneProfileUrl}>Download iPhone Profile</a>
+      ) : (
+        <a className="install-open-link" href={liveAppUrl} target="_blank" rel="noreferrer">Open DenSpace</a>
+      )}
     </div>
   );
 }
@@ -147,6 +147,7 @@ export default function DenSpaceApp() {
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
+  const installButtonText = isStandalone ? "Installed" : (installDevice === "iphone" ? "Download iPhone Profile" : "Get mobile app");
 
   function showBanFromResponse(status, data) {
     const banText = `${data?.error || ""} ${data?.details || ""}`;
@@ -371,27 +372,11 @@ export default function DenSpaceApp() {
     }
 
     const isAppleMobile = isAppleMobileBrowser(window.navigator);
-    const appUrl = getInstallUrl();
     if (isAppleMobile) {
       setInstallDevice("iphone");
       setInstallGuideOpen(true);
-
-      const iphoneFallback = "On iPhone: open DenSpace in Safari, tap Share, then tap Add to Home Screen.";
-      if (navigator.share) {
-        setInstallNote("Opening the iPhone share sheet. If Add to Home Screen is missing, open DenSpace in Safari first.");
-        try {
-          await navigator.share({
-            title: "DenSpace",
-            text: "Add DenSpace to your iPhone home screen.",
-            url: appUrl
-          });
-          setInstallNote("In the iPhone share sheet, scroll down and tap Add to Home Screen.");
-        } catch {
-          setInstallNote(iphoneFallback);
-        }
-      } else {
-        setInstallNote(iphoneFallback);
-      }
+      setInstallNote("Download the iPhone profile, then open Settings and tap Profile Downloaded.");
+      window.location.href = iphoneProfileUrl;
       return;
     }
 
@@ -683,7 +668,7 @@ export default function DenSpaceApp() {
             </div>
           </form>
           <button className="mobile-install-button auth-install-button" type="button" onClick={handleMobileDownload}>
-            <Download /> {isStandalone ? "Installed" : "Get mobile app"}
+            <Download /> {installButtonText}
           </button>
           {installNote && <p className="install-note">{installNote}</p>}
           {installGuideOpen && <InstallGuide device={installDevice} />}
@@ -744,7 +729,7 @@ export default function DenSpaceApp() {
               <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Search posts, tags, makers" />
             </label>
             <div className="top-actions">
-              <button className="mobile-install-button" type="button" onClick={handleMobileDownload}><Download /> {isStandalone ? "Installed" : "Get mobile app"}</button>
+              <button className="mobile-install-button" type="button" onClick={handleMobileDownload}><Download /> {installButtonText}</button>
               <button className="top-auth-button" type="button" onClick={user ? handleSignOut : () => setAuthNote("Sign in or create an account to continue.")}>{user ? <LogOut /> : <LogIn />} {user ? "Sign out" : "Sign in"}</button>
               <button className="icon-button" type="button" aria-label="Notifications"><Bell /></button>
               <button className="icon-button" type="button" aria-label="Group chats" onClick={() => setActiveScreen("chats")}><MessageCircle /></button>
