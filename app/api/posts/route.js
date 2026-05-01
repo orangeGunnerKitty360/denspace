@@ -24,9 +24,11 @@ export async function GET(request) {
   const rows = await db`
     SELECT
       posts.*,
+      COALESCE(post_profiles.avatar_url, posts.author_image_url) AS profile_image_url,
       COALESCE(reaction_counts.reactions, '{}'::jsonb) AS reactions,
       COALESCE(comment_rows.comments, '[]'::jsonb) AS comments
     FROM posts
+    LEFT JOIN user_profiles post_profiles ON post_profiles.user_id = posts.user_id
     LEFT JOIN LATERAL (
       SELECT jsonb_object_agg(reaction_counts.reaction, reaction_counts.count) AS reactions
       FROM (
@@ -42,14 +44,22 @@ export async function GET(request) {
           'id', limited_comments.id,
           'author_name', limited_comments.author_name,
           'author_email', limited_comments.author_email,
+          'author_image_url', limited_comments.author_image_url,
           'body', limited_comments.body,
           'created_at', limited_comments.created_at
         )
         ORDER BY limited_comments.created_at ASC
       ) AS comments
       FROM (
-        SELECT id, author_name, author_email, body, created_at
+        SELECT
+          post_comments.id,
+          post_comments.author_name,
+          post_comments.author_email,
+          COALESCE(comment_profiles.avatar_url, post_comments.author_image_url) AS author_image_url,
+          post_comments.body,
+          post_comments.created_at
         FROM post_comments
+        LEFT JOIN user_profiles comment_profiles ON comment_profiles.user_id = post_comments.user_id
         WHERE post_id = posts.id
           AND NOT EXISTS (
             SELECT 1
@@ -130,6 +140,14 @@ export async function POST(request) {
     });
   }
 
+  const profiles = await db`
+    SELECT avatar_url
+    FROM user_profiles
+    WHERE user_id = ${user.id}
+    LIMIT 1
+  `;
+  const authorImageUrl = profiles[0]?.avatar_url || user.image || null;
+
   const rows = await db`
     INSERT INTO posts (
       user_id,
@@ -137,6 +155,7 @@ export async function POST(request) {
       author_email,
       kind,
       body,
+      author_image_url,
       image_url,
       image_pathname,
       image_content_type,
@@ -148,6 +167,7 @@ export async function POST(request) {
       ${user.email},
       ${kind},
       ${text},
+      ${authorImageUrl},
       ${blob?.url || null},
       ${blob?.pathname || null},
       ${file instanceof File ? file.type : null},

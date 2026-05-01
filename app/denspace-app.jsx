@@ -89,13 +89,21 @@ function InstallGuide({ device }) {
   );
 }
 
-function getDisplayUser(user) {
+function UserAvatar({ avatar, picture, className = "", label = "" }) {
+  return (
+    <div className={`avatar ${className}`}>
+      {picture ? <img src={picture} alt={label} /> : avatar}
+    </div>
+  );
+}
+
+function getDisplayUser(user, profile) {
   return user ? {
     name: user.name || user.email,
     handle: user.email,
     avatar: (user.name || user.email || "You").slice(0, 3),
     avatarClass: "avatar-sun",
-    picture: user.image || ""
+    picture: profile?.avatarUrl || user.image || ""
   } : {
     name: "You",
     handle: "Email sign-in required",
@@ -112,11 +120,13 @@ function formatBytes(bytes) {
 export default function DenSpaceApp() {
   const { data: session, isPending, refetch } = authClient.useSession();
   const user = session?.user || null;
-  const displayUser = getDisplayUser(user);
   const [activeScreen, setActiveScreen] = useState("home");
   const [authMode, setAuthMode] = useState("sign-up");
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "", remember: true });
   const [authNote, setAuthNote] = useState("Your account and sessions are handled by Neon Auth.");
+  const [profile, setProfile] = useState(null);
+  const [profileNote, setProfileNote] = useState("");
+  const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
   const [posts, setPosts] = useState([]);
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeKind, setActiveKind] = useState("art");
@@ -152,7 +162,9 @@ export default function DenSpaceApp() {
   const banAudioElementRef = useRef(null);
   const banSoundRetryRef = useRef(null);
   const banSoundUnmuteTimerRef = useRef(null);
+  const profileImageInputRef = useRef(null);
 
+  const displayUser = getDisplayUser(user, profile);
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
   const installButtonText = isStandalone ? "Installed" : (installDevice === "iphone" ? "Download iPhone Profile" : "Get mobile app");
@@ -215,6 +227,24 @@ export default function DenSpaceApp() {
     setChatMessages(data.messages || []);
   };
 
+  const fetchProfile = async () => {
+    if (!user) {
+      setProfile(null);
+      setProfileNote("");
+      return;
+    }
+
+    const response = await fetch("/api/account/profile");
+    if (!response.ok) {
+      setProfileNote("Profile picture could not be loaded yet.");
+      return;
+    }
+
+    const data = await response.json();
+    setProfile(data.profile || null);
+    setProfileNote("");
+  };
+
   useEffect(() => {
     fetchPosts();
   }, [activeFilter, search]);
@@ -226,6 +256,10 @@ export default function DenSpaceApp() {
   useEffect(() => {
     fetchChatMessages(selectedChatId);
   }, [selectedChatId]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
@@ -397,13 +431,62 @@ export default function DenSpaceApp() {
 
     setAuthNote(authForm.remember ? "Signed in and remembered on this device." : "Signed in for this browser session.");
     await refetch();
+    await fetchProfile();
     await fetchPosts();
     await fetchChats();
+  }
+
+  async function handleProfilePictureChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setProfileNote("Choose an image file for your profile picture.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileNote("Profile pictures must be 5 MB or smaller.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+    setIsUploadingProfilePicture(true);
+    setProfileNote("Uploading profile picture...");
+
+    try {
+      const response = await fetch("/api/account/profile", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (!showBanFromResponse(response.status, data)) {
+          setProfileNote(data.error || "Profile picture could not be uploaded.");
+        }
+        return;
+      }
+
+      setProfile(data.profile || null);
+      setProfileNote("Profile picture updated.");
+      await fetchPosts();
+      await fetchChatMessages(selectedChatId);
+    } catch {
+      setProfileNote("Profile picture could not be uploaded.");
+    } finally {
+      setIsUploadingProfilePicture(false);
+    }
   }
 
   async function handleSignOut() {
     await authClient.signOut();
     setBanNotice(null);
+    setProfile(null);
+    setProfileNote("");
     await refetch();
   }
 
@@ -909,14 +992,33 @@ export default function DenSpaceApp() {
             <button className="nav-item" type="button"><ShieldCheck /><span>Safety</span></button>
           </nav>
           <div className="mini-profile">
-            <div className={`avatar ${displayUser.avatarClass}`}>{displayUser.picture ? <img src={displayUser.picture} alt="" /> : displayUser.avatar}</div>
+            <button
+              className="profile-picture-button"
+              type="button"
+              aria-label="Change profile picture"
+              onClick={() => profileImageInputRef.current?.click()}
+              disabled={!user || isUploadingProfilePicture}
+            >
+              <UserAvatar avatar={displayUser.avatar} picture={displayUser.picture} className={displayUser.avatarClass} />
+              <span><Upload /></span>
+            </button>
             <div>
               <div className="profile-name-line">
                 <strong>{displayUser.name}</strong>
                 <ProfileBadge name={displayUser.name} />
               </div>
               <span>{displayUser.handle}</span>
+              {user && <small>{isUploadingProfilePicture ? "Uploading..." : "Tap photo to change"}</small>}
+              {profileNote && <small className="profile-note">{profileNote}</small>}
             </div>
+            <input
+              ref={profileImageInputRef}
+              className="profile-picture-input"
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              onChange={handleProfilePictureChange}
+              disabled={!user || isUploadingProfilePicture}
+            />
             <button className="profile-signout" type="button" aria-label="Sign out" onClick={handleSignOut}><LogOut /></button>
           </div>
         </aside>
@@ -1020,7 +1122,7 @@ export default function DenSpaceApp() {
                       <div className="chat-messages screen-messages" aria-label={`${activeChat.name} messages`}>
                         {chatMessages.length ? chatMessages.map((message) => (
                           <article className="chat-message" key={message.id}>
-                            <span className="comment-avatar">{message.avatar}</span>
+                            <UserAvatar avatar={message.avatar} picture={message.picture} className="comment-avatar" />
                             <div>
                               <div className="comment-author-line">
                                 <strong>{message.author}</strong>
@@ -1067,7 +1169,7 @@ export default function DenSpaceApp() {
           </section>
 
           <section className="composer" aria-label="Create post">
-            <div className="avatar avatar-mint">You</div>
+            <UserAvatar avatar={displayUser.avatar} picture={displayUser.picture} className="avatar-mint" />
             <div className="composer-panel">
               <label className="post-text-field" htmlFor="postText">
                 <span>Post text</span>
@@ -1111,7 +1213,7 @@ export default function DenSpaceApp() {
                 {visiblePosts.length ? visiblePosts.map((post) => (
                   <article className="post-card" key={post.id}>
                     <header className="post-head">
-                      <div className={`avatar ${post.avatarClass}`}>{post.avatar}</div>
+                      <UserAvatar avatar={post.avatar} picture={post.picture} className={post.avatarClass} />
                       <div className="post-author">
                         <div className="post-author-line">
                           <strong>{post.author}</strong>
@@ -1145,7 +1247,7 @@ export default function DenSpaceApp() {
                         {(post.comments || []).length ? (
                           (post.comments || []).map((comment) => (
                             <article className="comment" key={comment.id}>
-                              <div className="comment-avatar">{comment.avatar}</div>
+                              <UserAvatar avatar={comment.avatar} picture={comment.picture} className="comment-avatar" />
                               <div>
                                 <div className="comment-author-line">
                                   <strong>{comment.author}</strong>
@@ -1178,7 +1280,7 @@ export default function DenSpaceApp() {
                   </article>
                 )) : (
                   <article className="post-card empty-state">
-                    <div className="avatar avatar-mint">You</div>
+                    <UserAvatar avatar={displayUser.avatar} picture={displayUser.picture} className="avatar-mint" />
                     <div>
                       <strong>{feedNote || "No posts yet."}</strong>
                       <p className="post-body">{feedNote ? "Once Neon and Blob environment variables are connected, the shared feed will appear here." : "Upload an image or write a post to start your feed."}</p>

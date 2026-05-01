@@ -394,6 +394,7 @@ button {
 .tool-chip svg,
 .primary-button svg,
 .upload-button svg,
+.profile-picture-button svg,
 .remove-upload svg,
 .hero-meta svg,
 .search svg {
@@ -427,6 +428,52 @@ button {
   box-shadow: inset 0 1px rgba(255,255,255,0.24);
 }
 
+.profile-picture-button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #003f66;
+}
+
+.profile-picture-button:disabled {
+  cursor: default;
+}
+
+.profile-picture-button > .avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.profile-picture-button > span {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: #00445f;
+  background: linear-gradient(180deg, #ffffff, #95f5ff 52%, #4ae276);
+  border: 1px solid rgba(255,255,255,0.9);
+  box-shadow: var(--inner-shine), 0 5px 12px rgba(0, 92, 130, 0.2);
+}
+
+.profile-picture-button > span svg {
+  width: 12px;
+  height: 12px;
+}
+
+.profile-picture-input {
+  display: none;
+}
+
 .profile-signout svg {
   width: 17px;
   height: 17px;
@@ -443,6 +490,25 @@ button {
 .mini-profile span {
   color: #d8f8ff;
   font-size: 0.82rem;
+}
+
+.mini-profile small {
+  display: block;
+  margin-top: 2px;
+  color: #effdff;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.mini-profile .profile-note {
+  color: #fff6a8;
+}
+
+.mini-profile .profile-picture-button > span {
+  display: grid;
+  overflow: visible;
+  color: #00445f;
+  font-size: 1rem;
 }
 
 .profile-name-line,
@@ -1691,7 +1757,7 @@ button {
 
   .brand span:not(.brand-mark),
   .nav-item span,
-  .mini-profile div,
+  .mini-profile > div,
   .profile-signout {
     display: none;
   }

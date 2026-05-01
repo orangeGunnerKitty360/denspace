@@ -40,12 +40,21 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Post not found." }, { status: 404 });
   }
 
+  const profiles = await db`
+    SELECT avatar_url
+    FROM user_profiles
+    WHERE user_id = ${user.id}
+    LIMIT 1
+  `;
+  const authorImageUrl = profiles[0]?.avatar_url || user.image || null;
+
   const rows = await db`
     INSERT INTO post_comments (
       post_id,
       user_id,
       author_name,
       author_email,
+      author_image_url,
       body
     )
     VALUES (
@@ -53,6 +62,7 @@ export async function POST(request, { params }) {
       ${user.id},
       ${user.name || user.email},
       ${user.email},
+      ${authorImageUrl},
       ${text}
     )
     RETURNING *

@@ -11,8 +11,11 @@ export async function GET(_request, { params }) {
   const { id } = await params;
   const db = getSql();
   const rows = await db`
-    SELECT *
+    SELECT
+      group_chat_messages.*,
+      COALESCE(message_profiles.avatar_url, group_chat_messages.author_image_url) AS profile_image_url
     FROM group_chat_messages
+    LEFT JOIN user_profiles message_profiles ON message_profiles.user_id = group_chat_messages.user_id
     WHERE chat_id = ${id}
       AND NOT EXISTS (
         SELECT 1
@@ -70,12 +73,21 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Group chat not found." }, { status: 404 });
   }
 
+  const profiles = await db`
+    SELECT avatar_url
+    FROM user_profiles
+    WHERE user_id = ${user.id}
+    LIMIT 1
+  `;
+  const authorImageUrl = profiles[0]?.avatar_url || user.image || null;
+
   const rows = await db`
     INSERT INTO group_chat_messages (
       chat_id,
       user_id,
       author_name,
       author_email,
+      author_image_url,
       body
     )
     VALUES (
@@ -83,6 +95,7 @@ export async function POST(request, { params }) {
       ${user.id},
       ${user.name || user.email},
       ${user.email},
+      ${authorImageUrl},
       ${text}
     )
     RETURNING *
