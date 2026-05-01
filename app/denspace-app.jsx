@@ -149,6 +149,7 @@ export default function DenSpaceApp() {
   const banAudioContextRef = useRef(null);
   const banAudioSourceRef = useRef(null);
   const banAudioElementRef = useRef(null);
+  const banSoundRetryRef = useRef(null);
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
@@ -252,27 +253,28 @@ export default function DenSpaceApp() {
 
   useEffect(() => {
     if (!isBanned || typeof window === "undefined") {
+      clearBanSoundRetry();
       stopBanSound();
       return;
     }
 
-    let attempts = 0;
-    let intervalId;
-    let stopped = false;
-    const retryBanSound = async () => {
-      if (stopped) return;
-      attempts += 1;
-      const played = await playBanSound();
-      if (played || attempts >= 8) {
-        stopped = true;
-        if (intervalId) window.clearInterval(intervalId);
+    const playWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        playBanScreenSound();
       }
     };
 
-    retryBanSound();
-    intervalId = window.setInterval(retryBanSound, 350);
+    playBanScreenSound();
+    window.addEventListener("focus", playBanScreenSound);
+    window.addEventListener("pageshow", playBanScreenSound);
+    document.addEventListener("visibilitychange", playWhenVisible);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      clearBanSoundRetry();
+      window.removeEventListener("focus", playBanScreenSound);
+      window.removeEventListener("pageshow", playBanScreenSound);
+      document.removeEventListener("visibilitychange", playWhenVisible);
+    };
   }, [isBanned, user?.id, banNotice?.error, banNotice?.details]);
 
   useEffect(() => {
@@ -466,6 +468,32 @@ export default function DenSpaceApp() {
       // Some browsers block autoplay until the user has interacted with the page.
       return playBanSoundWithElement();
     }
+  }
+
+  function clearBanSoundRetry() {
+    if (typeof window === "undefined" || !banSoundRetryRef.current) return;
+
+    window.clearInterval(banSoundRetryRef.current);
+    banSoundRetryRef.current = null;
+  }
+
+  function playBanScreenSound() {
+    if (typeof window === "undefined") return;
+
+    clearBanSoundRetry();
+    stopBanSound();
+
+    let attempts = 0;
+    const retryBanSound = async () => {
+      attempts += 1;
+      const played = await playBanSound();
+      if (played || attempts >= 8) {
+        clearBanSoundRetry();
+      }
+    };
+
+    retryBanSound();
+    banSoundRetryRef.current = window.setInterval(retryBanSound, 350);
   }
 
   function stopBanSound() {
