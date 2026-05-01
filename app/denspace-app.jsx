@@ -333,16 +333,32 @@ export default function DenSpaceApp() {
       return;
     }
 
+    const userAgent = window.navigator.userAgent;
+    const isAppleMobile = /iphone|ipad|ipod/i.test(userAgent);
+    const isAndroid = /android/i.test(userAgent);
+    const fallbackNote = isAppleMobile
+      ? "On iPhone: tap Share, then Add to Home Screen."
+      : isAndroid
+        ? "On Android: open the browser menu, then tap Install app or Add to Home screen."
+        : "On your phone: open denspace.vercel.app, then use your browser menu to add DenSpace to the home screen.";
+
     if (installPrompt) {
-      installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
+      const promptEvent = installPrompt;
       setInstallPrompt(null);
-      setInstallNote(choice.outcome === "accepted" ? "DenSpace is downloading to your device." : "Mobile download canceled.");
+      setInstallNote(`Opening the install prompt. If nothing pops up, ${fallbackNote}`);
+
+      try {
+        await promptEvent.prompt();
+        promptEvent.userChoice.then((choice) => {
+          setInstallNote(choice.outcome === "accepted" ? "DenSpace is downloading to your device." : fallbackNote);
+        }).catch(() => setInstallNote(fallbackNote));
+      } catch {
+        setInstallNote(fallbackNote);
+      }
       return;
     }
 
-    const isAppleMobile = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-    setInstallNote(isAppleMobile ? "Tap Share, then Add to Home Screen." : "Open your browser menu and choose Install app.");
+    setInstallNote(fallbackNote);
   }
 
   async function createPost() {
