@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarDays,
   Crown,
+  Download,
   Home,
   Image,
   LockKeyhole,
@@ -105,6 +106,9 @@ export default function DenSpaceApp() {
   const [isPosting, setIsPosting] = useState(false);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [banNotice, setBanNotice] = useState(null);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installNote, setInstallNote] = useState("");
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
@@ -215,6 +219,40 @@ export default function DenSpaceApp() {
     return () => URL.revokeObjectURL(url);
   }, [selectedUpload]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    const updateStandalone = () => {
+      setIsStandalone(Boolean(standaloneQuery.matches || window.navigator.standalone));
+    };
+    const captureInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+      setInstallNote("");
+    };
+    const handleInstalled = () => {
+      setIsStandalone(true);
+      setInstallPrompt(null);
+      setInstallNote("DenSpace is ready on your home screen.");
+    };
+
+    updateStandalone();
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
+    window.addEventListener("beforeinstallprompt", captureInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+    standaloneQuery.addEventListener?.("change", updateStandalone);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+      standaloneQuery.removeEventListener?.("change", updateStandalone);
+    };
+  }, []);
+
   const visiblePosts = useMemo(() => posts, [posts]);
   const activeChat = useMemo(() => chats.find((chat) => chat.id === selectedChatId) || null, [chats, selectedChatId]);
 
@@ -287,6 +325,24 @@ export default function DenSpaceApp() {
     await authClient.signOut();
     setBanNotice(null);
     await refetch();
+  }
+
+  async function handleMobileDownload() {
+    if (isStandalone) {
+      setInstallNote("DenSpace is already running like a mobile app.");
+      return;
+    }
+
+    if (installPrompt) {
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setInstallPrompt(null);
+      setInstallNote(choice.outcome === "accepted" ? "DenSpace is downloading to your device." : "Mobile download canceled.");
+      return;
+    }
+
+    const isAppleMobile = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    setInstallNote(isAppleMobile ? "Tap Share, then Add to Home Screen." : "Open your browser menu and choose Install app.");
   }
 
   async function createPost() {
@@ -544,6 +600,10 @@ export default function DenSpaceApp() {
               </button>
             </div>
           </form>
+          <button className="mobile-install-button auth-install-button" type="button" onClick={handleMobileDownload}>
+            <Download /> {isStandalone ? "Installed" : "Get mobile app"}
+          </button>
+          {installNote && <p className="install-note">{installNote}</p>}
           <p className="auth-note">{authNote}</p>
         </div>
       </section>
@@ -601,11 +661,13 @@ export default function DenSpaceApp() {
               <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Search posts, tags, makers" />
             </label>
             <div className="top-actions">
+              <button className="mobile-install-button" type="button" onClick={handleMobileDownload}><Download /> {isStandalone ? "Installed" : "Get mobile app"}</button>
               <button className="top-auth-button" type="button" onClick={user ? handleSignOut : () => setAuthNote("Sign in or create an account to continue.")}>{user ? <LogOut /> : <LogIn />} {user ? "Sign out" : "Sign in"}</button>
               <button className="icon-button" type="button" aria-label="Notifications"><Bell /></button>
               <button className="icon-button" type="button" aria-label="Group chats" onClick={() => setActiveScreen("chats")}><MessageCircle /></button>
             </div>
           </header>
+          {installNote && <p className="install-note main-install-note">{installNote}</p>}
 
           {activeScreen === "chats" ? (
             <section className="chat-screen" aria-label="Group chats screen">

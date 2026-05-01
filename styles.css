@@ -356,6 +356,7 @@ button {
 .nav-item,
 .icon-button,
 .top-auth-button,
+.mobile-install-button,
 .tool-chip,
 .filter-pill,
 .ghost-button,
@@ -389,6 +390,7 @@ button {
 .nav-item svg,
 .icon-button svg,
 .top-auth-button svg,
+.mobile-install-button svg,
 .tool-chip svg,
 .primary-button svg,
 .upload-button svg,
@@ -588,6 +590,44 @@ button {
   border: 1px solid rgba(255,255,255,0.92);
   box-shadow: var(--inner-shine), 0 10px 20px rgba(31, 160, 59, 0.18);
   white-space: nowrap;
+}
+
+.mobile-install-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  color: #003d63;
+  background:
+    linear-gradient(180deg, #ffffff, #bdf6ff 52%, #65e9ff);
+  font-weight: 800;
+  padding: 0 14px;
+  border: 1px solid rgba(255,255,255,0.92);
+  box-shadow: var(--inner-shine), 0 10px 20px rgba(0, 126, 191, 0.16);
+  white-space: nowrap;
+}
+
+.auth-install-button {
+  width: 100%;
+}
+
+.install-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #004a75;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.35;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.84), rgba(207,247,255,0.62));
+  border: 1px solid rgba(255,255,255,0.78);
+  box-shadow: inset 0 1px rgba(255,255,255,0.92);
+}
+
+.main-install-note {
+  margin: -6px 0 18px;
 }
 
 .hero {
@@ -1656,14 +1696,16 @@ button {
   }
 
   .top-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .top-actions .icon-button {
     display: none;
   }
 
-  .top-auth-button {
+  .top-auth-button,
+  .mobile-install-button {
     width: 100%;
   }
 
