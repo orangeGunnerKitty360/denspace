@@ -1,4 +1,4 @@
-const CACHE_NAME = "denspace-mobile-v2";
+const CACHE_NAME = "denspace-mobile-v3";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",

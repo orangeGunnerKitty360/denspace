@@ -145,7 +145,6 @@ export default function DenSpaceApp() {
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [installDevice, setInstallDevice] = useState("phone");
   const [isStandalone, setIsStandalone] = useState(false);
-  const [banSoundBlocked, setBanSoundBlocked] = useState(false);
   const banAudioRef = useRef(null);
 
   const authVisible = !isPending && !user;
@@ -249,7 +248,10 @@ export default function DenSpaceApp() {
 
   useEffect(() => {
     if (!isBanned || typeof window === "undefined") {
-      setBanSoundBlocked(false);
+      if (banAudioRef.current) {
+        banAudioRef.current.pause();
+        banAudioRef.current.currentTime = 0;
+      }
       return;
     }
 
@@ -383,16 +385,16 @@ export default function DenSpaceApp() {
   }
 
   async function playBanSound() {
-    const audio = banAudioRef.current || new Audio(banSound);
-    banAudioRef.current = audio;
+    const audio = banAudioRef.current;
+    if (!audio) return;
+
     audio.currentTime = 0;
     audio.volume = 0.9;
 
     try {
       await audio.play();
-      setBanSoundBlocked(false);
     } catch {
-      setBanSoundBlocked(true);
+      // Some browsers block autoplay until the user has interacted with the page.
     }
   }
 
@@ -709,6 +711,7 @@ export default function DenSpaceApp() {
 
       {isBanned ? (
         <section className="ban-screen" aria-label="Account banned">
+          <audio ref={banAudioRef} src={banSound} autoPlay preload="auto" aria-hidden="true" />
           <div className="ban-card">
             <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
             <div>
@@ -721,11 +724,6 @@ export default function DenSpaceApp() {
             </div>
             <p className="ban-message">{banNotice.error}</p>
             <p className="auth-note">{banNotice.details}</p>
-            {banSoundBlocked && (
-              <button className="email-signup-button" type="button" onClick={playBanSound}>
-                <Bell /> Play ban sound
-              </button>
-            )}
             <button className="email-signup-button" type="button" onClick={handleSignOut}>
               <LogOut /> Sign out
             </button>
