@@ -830,6 +830,7 @@ export default function DenSpaceApp() {
                         )}
                       </div>
                       <div className="comment-form">
+                        <p className="comment-rule">Anti-furry hate comments trigger a permanent ban.</p>
                         <textarea
                           value={commentDrafts[post.id] || ""}
                           onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}
