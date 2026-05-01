@@ -296,6 +296,13 @@ export default function DenSpaceApp() {
   }, [isBanned]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    loadBanSoundBuffer().catch(() => {});
+    return undefined;
+  }, []);
+
+  useEffect(() => {
     if (!selectedUpload) {
       setUploadPreviewUrl("");
       return undefined;
@@ -449,12 +456,26 @@ export default function DenSpaceApp() {
     if (!context) return false;
 
     try {
-      await loadBanSoundBuffer();
       await context.resume();
-      banAudioUnlockedRef.current = true;
-      return true;
+      banAudioUnlockedRef.current = context.state === "running";
+      loadBanSoundBuffer().catch(() => {});
+      return banAudioUnlockedRef.current;
     } catch {
       // The next real user interaction will try again.
+      loadBanSoundBuffer().catch(() => {});
+      return false;
+    }
+  }
+
+  async function playBanSoundWithElement() {
+    try {
+      const audio = new Audio(banSound);
+      audio.preload = "auto";
+      audio.volume = 1;
+      audio.currentTime = 0;
+      await audio.play();
+      return true;
+    } catch {
       return false;
     }
   }
@@ -466,7 +487,7 @@ export default function DenSpaceApp() {
 
       await context.resume();
       const buffer = await loadBanSoundBuffer();
-      if (!buffer) return false;
+      if (!buffer) return playBanSoundWithElement();
 
       stopBanSound();
 
@@ -481,7 +502,7 @@ export default function DenSpaceApp() {
       return true;
     } catch {
       // Some browsers block autoplay until the user has interacted with the page.
-      return false;
+      return playBanSoundWithElement();
     }
   }
 
