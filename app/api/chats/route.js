@@ -24,11 +24,23 @@ export async function GET() {
       SELECT count(*)::int AS count
       FROM group_chat_messages
       WHERE chat_id = group_chats.id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM user_bans
+          WHERE user_bans.user_id = group_chat_messages.user_id
+             OR lower(user_bans.user_email) = lower(group_chat_messages.author_email)
+        )
     ) AS message_counts ON true
     LEFT JOIN LATERAL (
       SELECT body
       FROM group_chat_messages
       WHERE chat_id = group_chats.id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM user_bans
+          WHERE user_bans.user_id = group_chat_messages.user_id
+             OR lower(user_bans.user_email) = lower(group_chat_messages.author_email)
+        )
       ORDER BY created_at DESC
       LIMIT 1
     ) AS latest_message ON true

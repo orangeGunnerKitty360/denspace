@@ -51,6 +51,12 @@ export async function GET(request) {
         SELECT id, author_name, author_email, body, created_at
         FROM post_comments
         WHERE post_id = posts.id
+          AND NOT EXISTS (
+            SELECT 1
+            FROM user_bans
+            WHERE user_bans.user_id = post_comments.user_id
+               OR lower(user_bans.user_email) = lower(post_comments.author_email)
+          )
         ORDER BY created_at ASC
       ) AS limited_comments
     ) AS comment_rows ON true

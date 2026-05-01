@@ -14,6 +14,12 @@ export async function GET(_request, { params }) {
     SELECT *
     FROM group_chat_messages
     WHERE chat_id = ${id}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM user_bans
+        WHERE user_bans.user_id = group_chat_messages.user_id
+           OR lower(user_bans.user_email) = lower(group_chat_messages.author_email)
+      )
     ORDER BY created_at ASC
     LIMIT 80
   `;
