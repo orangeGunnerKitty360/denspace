@@ -151,6 +151,7 @@ export default function DenSpaceApp() {
   const banAudioSourceRef = useRef(null);
   const banAudioElementRef = useRef(null);
   const banSoundRetryRef = useRef(null);
+  const banSoundUnmuteTimerRef = useRef(null);
 
   const authVisible = !isPending && !user;
   const isBanned = Boolean(user && banNotice);
@@ -436,7 +437,7 @@ export default function DenSpaceApp() {
       const audio = banAudioElementRef.current || new Audio(banSound);
       banAudioElementRef.current = audio;
       audio.autoplay = true;
-      audio.muted = false;
+      audio.loop = true;
       audio.playsInline = true;
       audio.preload = "auto";
       audio.volume = 1;
@@ -444,7 +445,14 @@ export default function DenSpaceApp() {
       if (audio.readyState === 0) {
         audio.load();
       }
-      await audio.play();
+      audio.muted = false;
+      try {
+        await audio.play();
+      } catch {
+        audio.muted = true;
+        await audio.play();
+        unmuteBanSound();
+      }
       return true;
     } catch {
       return false;
@@ -452,13 +460,18 @@ export default function DenSpaceApp() {
   }
 
   async function playBanSound() {
+    const elementPlayed = await playBanSoundWithElement();
+    if (elementPlayed) return true;
+
     try {
       const context = getBanAudioContext();
       if (!context) return false;
 
       await context.resume();
+      if (context.state !== "running") return false;
+
       const buffer = await loadBanSoundBuffer();
-      if (!buffer) return playBanSoundWithElement();
+      if (!buffer) return false;
 
       stopBanSound();
 
@@ -466,6 +479,7 @@ export default function DenSpaceApp() {
       const gain = context.createGain();
       gain.gain.value = 0.9;
       source.buffer = buffer;
+      source.loop = true;
       source.connect(gain);
       gain.connect(context.destination);
       source.start(0);
@@ -473,7 +487,7 @@ export default function DenSpaceApp() {
       return true;
     } catch {
       // Some browsers block autoplay until the user has interacted with the page.
-      return playBanSoundWithElement();
+      return false;
     }
   }
 
@@ -482,6 +496,25 @@ export default function DenSpaceApp() {
 
     window.clearInterval(banSoundRetryRef.current);
     banSoundRetryRef.current = null;
+  }
+
+  function clearBanSoundUnmuteTimer() {
+    if (typeof window === "undefined" || !banSoundUnmuteTimerRef.current) return;
+
+    window.clearTimeout(banSoundUnmuteTimerRef.current);
+    banSoundUnmuteTimerRef.current = null;
+  }
+
+  function unmuteBanSound() {
+    if (typeof window === "undefined") return;
+
+    clearBanSoundUnmuteTimer();
+    banSoundUnmuteTimerRef.current = window.setTimeout(() => {
+      if (!banAudioElementRef.current) return;
+
+      banAudioElementRef.current.muted = false;
+      banAudioElementRef.current.volume = 1;
+    }, 180);
   }
 
   function playBanScreenSound() {
@@ -505,9 +538,12 @@ export default function DenSpaceApp() {
   }
 
   function stopBanSound() {
+    clearBanSoundUnmuteTimer();
+
     if (banAudioElementRef.current) {
       banAudioElementRef.current.pause();
       banAudioElementRef.current.currentTime = 0;
+      banAudioElementRef.current.loop = false;
     }
 
     if (!banAudioSourceRef.current) return;
@@ -832,11 +868,14 @@ export default function DenSpaceApp() {
             ref={banAudioElementRef}
             src={banSound}
             autoPlay
+            muted
+            loop
             playsInline
             preload="auto"
             aria-hidden="true"
             onLoadedData={playBanSoundWithElement}
             onCanPlayThrough={playBanSoundWithElement}
+            onPlaying={unmuteBanSound}
           />
           <div className="ban-card">
             <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
