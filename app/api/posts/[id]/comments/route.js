@@ -2,7 +2,7 @@ import { ensureSchema, getSql } from "../../../../../lib/db";
 import { getAuth } from "../../../../../lib/auth/server";
 import { serializeComment } from "../../../../../lib/posts";
 import { moderatePostContent } from "../../../../../lib/moderation";
-import { enforceContentAutoBan, enforceUserBanStatus } from "../../../../../lib/user-bans";
+import { enforceCommentHateAutoBan, enforceUserBanStatus } from "../../../../../lib/user-bans";
 
 export const runtime = "nodejs";
 
@@ -27,8 +27,8 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Write a comment before sending." }, { status: 400 });
   }
 
-  const contentBan = await enforceContentAutoBan(db, user, { text, context: "comment" });
-  if (contentBan.banned) return contentBan.response;
+  const hateBan = await enforceCommentHateAutoBan(db, user, { text });
+  if (hateBan.banned) return hateBan.response;
 
   const moderation = await moderatePostContent({ text });
 
