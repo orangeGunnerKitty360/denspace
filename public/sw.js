@@ -3,6 +3,7 @@ const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
   "/assets/denspace-icon.png",
+  "/assets/denspace-icon-180.png",
   "/assets/denspace-icon-192.png",
   "/assets/denspace-icon-512.png",
   "/assets/frutiger-aero-banner.png"

@@ -630,6 +630,85 @@ button {
   margin: -6px 0 18px;
 }
 
+.install-guide {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  color: #004a75;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.9), rgba(214,249,255,0.66));
+  border: 1px solid rgba(255,255,255,0.82);
+  box-shadow: var(--inner-shine), 0 10px 24px rgba(0, 126, 191, 0.12);
+}
+
+.main-content > .install-guide {
+  margin: -8px 0 18px;
+}
+
+.install-guide-head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.install-guide-icon {
+  width: 44px;
+  height: 44px;
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: var(--inner-shine), 0 8px 18px rgba(0, 103, 170, 0.16);
+}
+
+.install-guide-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.install-guide strong,
+.install-guide span {
+  display: block;
+  min-width: 0;
+}
+
+.install-guide span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.install-guide ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.install-guide li {
+  margin: 5px 0;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.install-open-link {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #003d63;
+  text-decoration: none;
+  font-weight: 900;
+  background:
+    linear-gradient(180deg, #ffffff, #f4ff99 40%, #b7f23e 41%, #40c95d);
+  border: 1px solid rgba(255,255,255,0.92);
+  box-shadow: var(--inner-shine), 0 8px 18px rgba(31, 160, 59, 0.16);
+}
+
 .hero {
   position: relative;
   min-height: 250px;
@@ -1706,6 +1785,10 @@ button {
 
   .top-auth-button,
   .mobile-install-button {
+    width: 100%;
+  }
+
+  .install-open-link {
     width: 100%;
   }
 

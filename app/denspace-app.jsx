@@ -30,6 +30,17 @@ const events = [];
 const postKinds = ["art", "meetup", "making"];
 const ownerNames = new Set(["frutigerfloppa"]);
 const denSpaceIcon = "/assets/denspace-icon.png";
+const liveAppUrl = "https://denspace.vercel.app/";
+
+function isAppleMobileBrowser(navigatorObject) {
+  const userAgent = navigatorObject.userAgent || "";
+  return /iphone|ipad|ipod/i.test(userAgent) || (navigatorObject.platform === "MacIntel" && navigatorObject.maxTouchPoints > 1);
+}
+
+function getInstallUrl() {
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  return isLocal ? liveAppUrl : window.location.href.split("#")[0];
+}
 
 function isOwnerName(name) {
   return ownerNames.has(String(name || "").trim().toLowerCase());
@@ -53,6 +64,28 @@ function UserBadge() {
 
 function ProfileBadge({ name }) {
   return isOwnerName(name) ? <OwnerBadge /> : <UserBadge />;
+}
+
+function InstallGuide({ device }) {
+  const isIphone = device === "iphone";
+
+  return (
+    <div className="install-guide" role="status">
+      <div className="install-guide-head">
+        <span className="install-guide-icon"><img src={denSpaceIcon} alt="" /></span>
+        <div>
+          <strong>{isIphone ? "Install DenSpace on iPhone" : "Install DenSpace on mobile"}</strong>
+          <span>{isIphone ? "Use Safari so iOS can add the app icon." : "Use your phone browser to add the app icon."}</span>
+        </div>
+      </div>
+      <ol>
+        <li>{isIphone ? "Open DenSpace in Safari." : "Open DenSpace on your phone."}</li>
+        <li>{isIphone ? "Tap the Share button." : "Open the browser menu."}</li>
+        <li>{isIphone ? "Tap Add to Home Screen." : "Tap Install app or Add to Home screen."}</li>
+      </ol>
+      <a className="install-open-link" href={liveAppUrl} target="_blank" rel="noreferrer">Open DenSpace</a>
+    </div>
+  );
 }
 
 function getDisplayUser(user) {
@@ -108,6 +141,8 @@ export default function DenSpaceApp() {
   const [banNotice, setBanNotice] = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installNote, setInstallNote] = useState("");
+  const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  const [installDevice, setInstallDevice] = useState("phone");
   const [isStandalone, setIsStandalone] = useState(false);
 
   const authVisible = !isPending && !user;
@@ -234,10 +269,12 @@ export default function DenSpaceApp() {
     const handleInstalled = () => {
       setIsStandalone(true);
       setInstallPrompt(null);
+      setInstallGuideOpen(false);
       setInstallNote("DenSpace is ready on your home screen.");
     };
 
     updateStandalone();
+    setInstallDevice(isAppleMobileBrowser(window.navigator) ? "iphone" : (/android/i.test(window.navigator.userAgent) ? "android" : "phone"));
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
@@ -333,24 +370,52 @@ export default function DenSpaceApp() {
       return;
     }
 
-    const userAgent = window.navigator.userAgent;
-    const isAppleMobile = /iphone|ipad|ipod/i.test(userAgent);
-    const isAndroid = /android/i.test(userAgent);
-    const fallbackNote = isAppleMobile
-      ? "On iPhone: tap Share, then Add to Home Screen."
-      : isAndroid
-        ? "On Android: open the browser menu, then tap Install app or Add to Home screen."
-        : "On your phone: open denspace.vercel.app, then use your browser menu to add DenSpace to the home screen.";
+    const isAppleMobile = isAppleMobileBrowser(window.navigator);
+    const appUrl = getInstallUrl();
+    if (isAppleMobile) {
+      setInstallDevice("iphone");
+      setInstallGuideOpen(true);
 
-    if (installPrompt) {
+      const iphoneFallback = "On iPhone: open DenSpace in Safari, tap Share, then tap Add to Home Screen.";
+      if (navigator.share) {
+        setInstallNote("Opening the iPhone share sheet. If Add to Home Screen is missing, open DenSpace in Safari first.");
+        try {
+          await navigator.share({
+            title: "DenSpace",
+            text: "Add DenSpace to your iPhone home screen.",
+            url: appUrl
+          });
+          setInstallNote("In the iPhone share sheet, scroll down and tap Add to Home Screen.");
+        } catch {
+          setInstallNote(iphoneFallback);
+        }
+      } else {
+        setInstallNote(iphoneFallback);
+      }
+      return;
+    }
+
+    const userAgent = window.navigator.userAgent;
+    const isAndroid = /android/i.test(userAgent);
+    const fallbackNote = isAndroid
+      ? "On Android: open the browser menu, then tap Install app or Add to Home screen."
+      : "On your phone: open denspace.vercel.app, then use your browser menu to add DenSpace to the home screen.";
+
+    if (installPrompt && isAndroid) {
       const promptEvent = installPrompt;
       setInstallPrompt(null);
+      setInstallGuideOpen(true);
       setInstallNote(`Opening the install prompt. If nothing pops up, ${fallbackNote}`);
 
       try {
         await promptEvent.prompt();
         promptEvent.userChoice.then((choice) => {
-          setInstallNote(choice.outcome === "accepted" ? "DenSpace is downloading to your device." : fallbackNote);
+          if (choice.outcome === "accepted") {
+            setInstallGuideOpen(false);
+            setInstallNote("DenSpace is downloading to your device.");
+          } else {
+            setInstallNote(fallbackNote);
+          }
         }).catch(() => setInstallNote(fallbackNote));
       } catch {
         setInstallNote(fallbackNote);
@@ -358,6 +423,7 @@ export default function DenSpaceApp() {
       return;
     }
 
+    setInstallGuideOpen(true);
     setInstallNote(fallbackNote);
   }
 
@@ -620,6 +686,7 @@ export default function DenSpaceApp() {
             <Download /> {isStandalone ? "Installed" : "Get mobile app"}
           </button>
           {installNote && <p className="install-note">{installNote}</p>}
+          {installGuideOpen && <InstallGuide device={installDevice} />}
           <p className="auth-note">{authNote}</p>
         </div>
       </section>
@@ -684,6 +751,7 @@ export default function DenSpaceApp() {
             </div>
           </header>
           {installNote && <p className="install-note main-install-note">{installNote}</p>}
+          {installGuideOpen && <InstallGuide device={installDevice} />}
 
           {activeScreen === "chats" ? (
             <section className="chat-screen" aria-label="Group chats screen">
