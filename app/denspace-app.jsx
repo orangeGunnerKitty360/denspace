@@ -1263,7 +1263,7 @@ export default function DenSpaceApp() {
                         )}
                       </div>
                       <div className="comment-form">
-                        <p className="comment-rule">AI checks comments immediately. Hate comments trigger a permanent ban.</p>
+                        <p className="comment-rule">AI checks comments immediately. Anti-furry comments trigger a permanent ban.</p>
                         <textarea
                           value={commentDrafts[post.id] || ""}
                           onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))}

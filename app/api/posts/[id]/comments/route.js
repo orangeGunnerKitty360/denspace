@@ -1,7 +1,7 @@
 import { ensureSchema, getSql } from "../../../../../lib/db";
 import { getAuth } from "../../../../../lib/auth/server";
 import { serializeComment } from "../../../../../lib/posts";
-import { enforceCommentHateAutoBan, enforceUserBanStatus } from "../../../../../lib/user-bans";
+import { enforceAntiFurryCommentAutoBan, enforceUserBanStatus } from "../../../../../lib/user-bans";
 
 export const runtime = "nodejs";
 
@@ -26,8 +26,8 @@ export async function POST(request, { params }) {
     return Response.json({ error: "Write a comment before sending." }, { status: 400 });
   }
 
-  const hateBan = await enforceCommentHateAutoBan(db, user, { text });
-  if (hateBan.banned) return hateBan.response;
+  const antiFurryBan = await enforceAntiFurryCommentAutoBan(db, user, { text });
+  if (antiFurryBan.banned) return antiFurryBan.response;
 
   const post = await db`
     SELECT id
