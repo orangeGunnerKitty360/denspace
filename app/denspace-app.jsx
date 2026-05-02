@@ -161,9 +161,6 @@ export default function DenSpaceApp() {
   const banAudioSourceRef = useRef(null);
   const banAudioElementRef = useRef(null);
   const banSoundRetryRef = useRef(null);
-  const banSoundUnmuteTimerRef = useRef(null);
-  const banSoundUnlockedRef = useRef(false);
-  const banSoundUnlockingRef = useRef(null);
   const profileImageInputRef = useRef(null);
 
   const displayUser = getDisplayUser(user, profile);
@@ -319,18 +316,7 @@ export default function DenSpaceApp() {
     if (typeof window === "undefined") return undefined;
 
     loadBanSoundBuffer().catch(() => {});
-    const unlockFromInteraction = () => {
-      unlockBanSound().catch(() => {});
-    };
-    window.addEventListener("pointerdown", unlockFromInteraction, { passive: true, capture: true });
-    window.addEventListener("touchstart", unlockFromInteraction, { passive: true, capture: true });
-    window.addEventListener("keydown", unlockFromInteraction, { capture: true });
-
-    return () => {
-      window.removeEventListener("pointerdown", unlockFromInteraction, { capture: true });
-      window.removeEventListener("touchstart", unlockFromInteraction, { capture: true });
-      window.removeEventListener("keydown", unlockFromInteraction, { capture: true });
-    };
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -528,35 +514,6 @@ export default function DenSpaceApp() {
     return banAudioBufferRef.current;
   }
 
-  async function unlockBanSound() {
-    if (banSoundUnlockedRef.current) return true;
-    if (banSoundUnlockingRef.current) return banSoundUnlockingRef.current;
-
-    banSoundUnlockingRef.current = (async () => {
-      const context = getBanAudioContext();
-      if (!context) return false;
-
-      await context.resume();
-      const silentBuffer = context.createBuffer(1, 1, 22050);
-      const source = context.createBufferSource();
-      const gain = context.createGain();
-      gain.gain.value = 0;
-      source.buffer = silentBuffer;
-      source.connect(gain);
-      gain.connect(context.destination);
-      source.start(0);
-
-      const unlocked = context.state === "running";
-      banSoundUnlockedRef.current = unlocked;
-      loadBanSoundBuffer().catch(() => {});
-      return unlocked;
-    })().finally(() => {
-      banSoundUnlockingRef.current = null;
-    });
-
-    return banSoundUnlockingRef.current;
-  }
-
   async function playBanSoundWithElement() {
     try {
       const audio = banAudioElementRef.current || new Audio(banSound);
@@ -571,15 +528,8 @@ export default function DenSpaceApp() {
         audio.load();
       }
       audio.muted = false;
-      try {
-        await audio.play();
-        return !audio.muted;
-      } catch {
-        audio.muted = true;
-        await audio.play();
-        unmuteBanSound();
-        return false;
-      }
+      await audio.play();
+      return !audio.muted;
     } catch {
       return false;
     }
@@ -624,29 +574,6 @@ export default function DenSpaceApp() {
     banSoundRetryRef.current = null;
   }
 
-  function clearBanSoundUnmuteTimer() {
-    if (typeof window === "undefined" || !banSoundUnmuteTimerRef.current) return;
-
-    window.clearTimeout(banSoundUnmuteTimerRef.current);
-    banSoundUnmuteTimerRef.current = null;
-  }
-
-  function unmuteBanSound() {
-    if (typeof window === "undefined") return;
-
-    clearBanSoundUnmuteTimer();
-    const tryUnmute = () => {
-      if (!banAudioElementRef.current) return;
-
-      banAudioElementRef.current.muted = false;
-      banAudioElementRef.current.volume = 1;
-      banAudioElementRef.current.play().catch(() => {});
-    };
-
-    tryUnmute();
-    banSoundUnmuteTimerRef.current = window.setTimeout(tryUnmute, 180);
-  }
-
   function playBanScreenSound() {
     if (typeof window === "undefined") return;
 
@@ -668,8 +595,6 @@ export default function DenSpaceApp() {
   }
 
   function stopBanSound() {
-    clearBanSoundUnmuteTimer();
-
     if (banAudioElementRef.current) {
       banAudioElementRef.current.pause();
       banAudioElementRef.current.currentTime = 0;
@@ -998,13 +923,11 @@ export default function DenSpaceApp() {
             ref={banAudioElementRef}
             src={banSound}
             autoPlay
-            muted
             playsInline
             preload="auto"
             aria-hidden="true"
             onLoadedData={playBanSoundWithElement}
             onCanPlayThrough={playBanSoundWithElement}
-            onPlaying={unmuteBanSound}
           />
           <div className="ban-card">
             <span className="brand-mark"><img src={denSpaceIcon} alt="" /></span>
