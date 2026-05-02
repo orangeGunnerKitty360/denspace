@@ -531,12 +531,13 @@ export default function DenSpaceApp() {
       audio.muted = false;
       try {
         await audio.play();
+        return !audio.muted;
       } catch {
         audio.muted = true;
         await audio.play();
         unmuteBanSound();
+        return false;
       }
-      return true;
     } catch {
       return false;
     }
@@ -592,12 +593,16 @@ export default function DenSpaceApp() {
     if (typeof window === "undefined") return;
 
     clearBanSoundUnmuteTimer();
-    banSoundUnmuteTimerRef.current = window.setTimeout(() => {
+    const tryUnmute = () => {
       if (!banAudioElementRef.current) return;
 
       banAudioElementRef.current.muted = false;
       banAudioElementRef.current.volume = 1;
-    }, 180);
+      banAudioElementRef.current.play().catch(() => {});
+    };
+
+    tryUnmute();
+    banSoundUnmuteTimerRef.current = window.setTimeout(tryUnmute, 180);
   }
 
   function playBanScreenSound() {
@@ -611,13 +616,13 @@ export default function DenSpaceApp() {
     const retryBanSound = async () => {
       attempts += 1;
       const played = await playBanSound();
-      if (played || attempts >= 8) {
+      if (played || attempts >= 60) {
         clearBanSoundRetry();
       }
     };
 
     retryBanSound();
-    banSoundRetryRef.current = window.setInterval(retryBanSound, 350);
+    banSoundRetryRef.current = window.setInterval(retryBanSound, 500);
   }
 
   function stopBanSound() {
