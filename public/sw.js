@@ -1,4 +1,4 @@
-const CACHE_NAME = "denspace-mobile-v10";
+const CACHE_NAME = "denspace-mobile-v11";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -6,7 +6,7 @@ const APP_SHELL = [
   "/assets/denspace-icon-180.png",
   "/assets/denspace-icon-192.png",
   "/assets/denspace-icon-512.png",
-  "/assets/ban-error.mp3",
+  "/assets/Microsoft%20Windows%2095%20Error%20-%20Sound%20Effect%20%28HD%29.mp3",
   "/assets/frutiger-aero-banner.png"
 ];
 

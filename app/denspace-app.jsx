@@ -30,7 +30,7 @@ const events = [];
 const postKinds = ["art", "meetup", "making"];
 const ownerNames = new Set(["frutigerfloppa"]);
 const denSpaceIcon = "/assets/denspace-icon.png";
-const banSound = "/assets/ban-error.mp3";
+const banSound = "/assets/Microsoft%20Windows%2095%20Error%20-%20Sound%20Effect%20%28HD%29.mp3";
 const liveAppUrl = "https://denspace.vercel.app/";
 const iphoneProfileUrl = "https://denspace.vercel.app/iphone-profile.mobileconfig";
 
