@@ -562,7 +562,7 @@ export default function DenSpaceApp() {
       const audio = banAudioElementRef.current || new Audio(banSound);
       banAudioElementRef.current = audio;
       audio.autoplay = true;
-      audio.loop = true;
+      audio.loop = false;
       audio.playsInline = true;
       audio.preload = "auto";
       audio.volume = 1;
@@ -605,7 +605,7 @@ export default function DenSpaceApp() {
       const gain = context.createGain();
       gain.gain.value = 0.9;
       source.buffer = buffer;
-      source.loop = true;
+      source.loop = false;
       source.connect(gain);
       gain.connect(context.destination);
       source.start(0);
@@ -999,7 +999,6 @@ export default function DenSpaceApp() {
             src={banSound}
             autoPlay
             muted
-            loop
             playsInline
             preload="auto"
             aria-hidden="true"
