@@ -162,6 +162,8 @@ export default function DenSpaceApp() {
   const banAudioElementRef = useRef(null);
   const banSoundRetryRef = useRef(null);
   const banSoundUnmuteTimerRef = useRef(null);
+  const banSoundUnlockedRef = useRef(false);
+  const banSoundUnlockingRef = useRef(null);
   const profileImageInputRef = useRef(null);
 
   const displayUser = getDisplayUser(user, profile);
@@ -317,7 +319,18 @@ export default function DenSpaceApp() {
     if (typeof window === "undefined") return undefined;
 
     loadBanSoundBuffer().catch(() => {});
-    return undefined;
+    const unlockFromInteraction = () => {
+      unlockBanSound().catch(() => {});
+    };
+    window.addEventListener("pointerdown", unlockFromInteraction, { passive: true, capture: true });
+    window.addEventListener("touchstart", unlockFromInteraction, { passive: true, capture: true });
+    window.addEventListener("keydown", unlockFromInteraction, { capture: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockFromInteraction, { capture: true });
+      window.removeEventListener("touchstart", unlockFromInteraction, { capture: true });
+      window.removeEventListener("keydown", unlockFromInteraction, { capture: true });
+    };
   }, []);
 
   useEffect(() => {
@@ -513,6 +526,35 @@ export default function DenSpaceApp() {
     const data = await response.arrayBuffer();
     banAudioBufferRef.current = await context.decodeAudioData(data);
     return banAudioBufferRef.current;
+  }
+
+  async function unlockBanSound() {
+    if (banSoundUnlockedRef.current) return true;
+    if (banSoundUnlockingRef.current) return banSoundUnlockingRef.current;
+
+    banSoundUnlockingRef.current = (async () => {
+      const context = getBanAudioContext();
+      if (!context) return false;
+
+      await context.resume();
+      const silentBuffer = context.createBuffer(1, 1, 22050);
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      gain.gain.value = 0;
+      source.buffer = silentBuffer;
+      source.connect(gain);
+      gain.connect(context.destination);
+      source.start(0);
+
+      const unlocked = context.state === "running";
+      banSoundUnlockedRef.current = unlocked;
+      loadBanSoundBuffer().catch(() => {});
+      return unlocked;
+    })().finally(() => {
+      banSoundUnlockingRef.current = null;
+    });
+
+    return banSoundUnlockingRef.current;
   }
 
   async function playBanSoundWithElement() {
