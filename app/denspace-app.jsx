@@ -100,7 +100,7 @@ function UserAvatar({ avatar, picture, className = "", label = "" }) {
 function getDisplayUser(user, profile) {
   return user ? {
     name: user.name || user.email,
-    handle: user.email,
+    handle: "DenSpace member",
     avatar: (user.name || user.email || "You").slice(0, 3),
     avatarClass: "avatar-sun",
     picture: profile?.avatarUrl || user.image || ""
@@ -1188,7 +1188,7 @@ export default function DenSpaceApp() {
                           <strong>{post.author}</strong>
                           <ProfileBadge name={post.author} />
                         </div>
-                        <span>{post.handle} · <span className="post-time">{post.time}</span></span>
+                        <span><span className="post-time">{post.time}</span></span>
                       </div>
                       <span className="post-tag">{post.kind}</span>
                     </header>
