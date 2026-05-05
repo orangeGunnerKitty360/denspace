@@ -122,6 +122,7 @@ export default function DenSpaceApp() {
   const user = session?.user || null;
   const [activeScreen, setActiveScreen] = useState("home");
   const [authMode, setAuthMode] = useState("sign-up");
+  const [authGateOpen, setAuthGateOpen] = useState(false);
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "", remember: true });
   const [authNote, setAuthNote] = useState("Your account and sessions are handled by Neon Auth.");
   const [profile, setProfile] = useState(null);
@@ -164,7 +165,7 @@ export default function DenSpaceApp() {
   const profileImageInputRef = useRef(null);
 
   const displayUser = getDisplayUser(user, profile);
-  const authVisible = !isPending && !user;
+  const authVisible = !user && (authGateOpen || !isPending);
   const isBanned = Boolean(user && banNotice);
   const installButtonText = isStandalone ? "Installed" : (installDevice === "iphone" ? "Download iPhone Profile" : "Get mobile app");
 
@@ -429,6 +430,7 @@ export default function DenSpaceApp() {
     }
 
     setAuthNote(authForm.remember ? "Signed in and remembered on this device." : "Signed in for this browser session.");
+    setAuthGateOpen(false);
     await refetch();
     await fetchProfile();
     await fetchPosts();
@@ -486,7 +488,20 @@ export default function DenSpaceApp() {
     setBanNotice(null);
     setProfile(null);
     setProfileNote("");
+    setAuthGateOpen(true);
     await refetch();
+  }
+
+  function openAuthGate(mode = "sign-in") {
+    setAuthMode(mode);
+    setAuthGateOpen(true);
+    setAuthNote(mode === "sign-up" ? "Create an account to join DenSpace." : "Sign in to keep using DenSpace.");
+  }
+
+  function toggleAuthMode() {
+    const nextMode = authMode === "sign-up" ? "sign-in" : "sign-up";
+    setAuthMode(nextMode);
+    setAuthNote(nextMode === "sign-up" ? "Create an account to join DenSpace." : "Sign in with your DenSpace email.");
   }
 
   function getBanAudioContext() {
@@ -902,7 +917,7 @@ export default function DenSpaceApp() {
               <Mail /> {isAuthSubmitting ? (authMode === "sign-up" ? "Creating account..." : "Signing in...") : (authMode === "sign-up" ? "Sign up with email" : "Sign in with email")}
             </button>
             <div className="auth-mode-row">
-              <button className="secondary-auth-button" type="button" onClick={() => setAuthMode(authMode === "sign-up" ? "sign-in" : "sign-up")}>
+              <button className="secondary-auth-button" type="button" onClick={toggleAuthMode}>
                 {authMode === "sign-up" ? "Already have an account?" : "Need an account?"}
               </button>
             </div>
@@ -1000,7 +1015,7 @@ export default function DenSpaceApp() {
             </label>
             <div className="top-actions">
               <button className="mobile-install-button" type="button" onClick={handleMobileDownload}><Download /> {installButtonText}</button>
-              <button className="top-auth-button" type="button" onClick={user ? handleSignOut : () => setAuthNote("Sign in or create an account to continue.")}>{user ? <LogOut /> : <LogIn />} {user ? "Sign out" : "Sign in"}</button>
+              <button className="top-auth-button" type="button" onClick={user ? handleSignOut : () => openAuthGate("sign-in")}>{user ? <LogOut /> : <LogIn />} {user ? "Sign out" : "Sign in"}</button>
               <button className="icon-button" type="button" aria-label="Notifications"><Bell /></button>
               <button className="icon-button" type="button" aria-label="Group chats" onClick={() => setActiveScreen("chats")}><MessageCircle /></button>
             </div>
